@@ -47,7 +47,8 @@ describe('.schedule', function() {
             lockedAt: new Date(0),
             processedAt: null,
             failedAt: null,
-            errorMsg: null
+            errorMsg: null,
+            retries: 0
         });
     });
 
@@ -72,7 +73,8 @@ describe('.schedule', function() {
             lockedAt: new Date(0),
             processedAt: null,
             failedAt: null,
-            errorMsg: null
+            errorMsg: null,
+            retries: 0
         });
     });
 
@@ -111,7 +113,8 @@ describe('.schedule', function() {
             lockedAt: new Date(0),
             processedAt: null,
             failedAt: null,
-            errorMsg: null
+            errorMsg: null,
+            retries: 0
         });
     });
 
@@ -136,7 +139,8 @@ describe('.schedule', function() {
             lockedAt: new Date(0),
             processedAt: null,
             failedAt: null,
-            errorMsg: null
+            errorMsg: null,
+            retries: 0
         });
     });
 
@@ -161,7 +165,8 @@ describe('.schedule', function() {
             lockedAt: new Date(0),
             processedAt: null,
             failedAt: null,
-            errorMsg: null
+            errorMsg: null,
+            retries: 0
         });
     });
 

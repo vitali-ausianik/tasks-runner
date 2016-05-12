@@ -190,4 +190,87 @@ describe('.run', function() {
         assert(startAtDelta < 50, 'Difference between old startAt and expected one is ' + startAtDelta + ' milliseconds');
         assert.equal(null, task.processedAt, 'Task was finished when it shouldn\'t');
     });
+
+    it('run failed task twice and check "retries" field (should be 2)', function* () {
+        let task = yield taskManager.schedule('test', 'task data', {
+                startAt: new Date(0)
+            }),
+            taskProcessorFactory = function(name) {
+                return {
+                    run: function* () {
+                        throw new Error('expected error');
+                    }
+                }
+            };
+
+        yield taskManager.run({
+            taskProcessorFactory: taskProcessorFactory
+        });
+
+        // set expired lock and set startAt in the past
+        yield db.collection.findOneAndUpdate(
+            { taskId: task.taskId },
+            {
+                $set: {
+                    lockedAt: new Date(Date.now() - 2000),
+                    startAt: new Date(0)
+                }
+            }
+        );
+
+        yield taskManager.run({
+            lockInterval: 1,
+            taskProcessorFactory: taskProcessorFactory
+        });
+
+        task = yield db.findTask({ taskId: task.taskId });
+
+        assert.equal(null, task.processedAt, 'Task was finished when it shouldn\'t');
+        assert.equal(2, task.retries, 'Task was failed twice but "retries" counter is ' + task.retries);
+        assert.equal('expected error', task.errorMsg);
+    });
+
+    it('run failed task twice and check "startAt" field (should be in two minutes)', function* () {
+        let task = yield taskManager.schedule('test', 'task data', {
+                startAt: new Date(0)
+            }),
+            taskProcessorFactory = function(name) {
+                return {
+                    run: function* () {
+                        throw new Error('expected error');
+                    }
+                }
+            };
+
+        yield taskManager.run({
+            taskProcessorFactory: taskProcessorFactory
+        });
+
+        // set expired lock and set startAt in the past
+        yield db.collection.findOneAndUpdate(
+            { taskId: task.taskId },
+            {
+                $set: {
+                    lockedAt: new Date(Date.now() - 2000),
+                    startAt: new Date(0)
+                }
+            }
+        );
+
+        yield taskManager.run({
+            lockInterval: 1,
+            taskProcessorFactory: taskProcessorFactory
+        });
+
+        task = yield db.findTask({ taskId: task.taskId });
+
+        assert.equal(null, task.processedAt, 'Task was finished when it shouldn\'t');
+        assert.equal(2, task.retries, 'Task was failed twice but "retries" counter is ' + task.retries);
+        assert.equal('expected error', task.errorMsg);
+
+        let newStartAt = Date.now() + 2000;
+        // assume infelicity of newStartAt is 50 milliseconds
+        let startAtDelta = Math.abs(task.startAt.getTime() - newStartAt);
+        assert(startAtDelta < 50, 'Difference between old startAt and expected one is ' + startAtDelta + ' milliseconds.');
+    });
 });

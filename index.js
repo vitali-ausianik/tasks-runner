@@ -114,6 +114,13 @@ module.exports = {
                 // something goes wrong with or within task processor - mark task as failed
                 console.log(err);
                 yield db.markTaskFailed(task.taskId, err.message);
+
+                // reschedule task in (retries+1) minutes
+                let delta = (task.retries + 1) * 1000,
+                    scheduleAt = new Date(Date.now() + delta);
+
+                yield db.rescheduleTask(task.taskId, scheduleAt);
+                break;
             }
 
             if ( task.repeatEvery > 0 ) {
