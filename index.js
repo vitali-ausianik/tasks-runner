@@ -99,9 +99,12 @@ module.exports = {
             }
 
             if ( task.group ) {
-                let blockersCount = yield db.findTaskBlockersCount(task.group, task.createdAt);
-                if ( blockersCount ) {
-                    // there are some tasks that should be processed before current one, skipping
+                let taskBlocker = yield db.findTaskBlocker(task.group, task.createdAt);
+                if ( taskBlocker ) {
+                    // if blocker' startAt greater than startAt of current - reschedule current task on new date
+                    if (taskBlocker.startAt.getTime() > task.startAt.getTime()) {
+                        yield db.rescheduleTask(task.taskId, new Date(taskBlocker.startAt.getTime() + 1000));
+                    }
                     break;
                 }
             }

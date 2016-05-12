@@ -166,6 +166,46 @@ describe('.run', function() {
         assert.equal(null, task2.processedAt, 'Task was processed when it shouldn\'t');
     });
 
+    it('process blocked task with specified group and check that it was rescheduled on new time', function* () {
+        let task1 = yield taskManager.schedule('test', 'task data', {
+                startAt: new Date(10000),
+                group:   'test'
+            }),
+            task2 = yield taskManager.schedule('test', 'task data', {
+                startAt: new Date(1000),
+                group:   'test'
+            }),
+            taskProcessorFactory = function () {
+                return {
+                    run: function*() {}
+                }
+            };
+
+        // lock first task to make it blocker for second task
+        // ensure that its createdAt is less then createdAt of second task
+        yield db._collection.findOneAndUpdate(
+            { taskId: task1.taskId },
+            {
+                $set: {
+                    lockedAt: new Date(),
+                    createdAt: new Date(task1.createdAt.getTime() - 1000)
+                }
+            }
+        );
+
+        yield taskManager.run({
+            lockInterval: 60,
+            taskProcessorFactory: taskProcessorFactory
+        });
+
+        task1 = yield db.findTask({ taskId: task1.taskId });
+        task2 = yield db.findTask({ taskId: task2.taskId });
+
+        assert.equal(null, task1.processedAt, 'Task was processed when it shouldn\'t');
+        assert.equal(null, task2.processedAt, 'Task was processed when it shouldn\'t');
+        assert.equal(11000, task2.startAt.getTime(), 'Task was node rescheduled or was rescheduled on wrong time');
+    });
+
     it('process repeatable task and check new scheduled date', function* () {
         let task = yield taskManager.schedule('test', 'task data', {
                 repeatEvery: 100,
