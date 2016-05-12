@@ -1,6 +1,7 @@
 {
-    "name": "application-name",
+    "name": "task-manager",
     "version": "0.0.1",
+    "main": "index.js",
     "scripts": {
         "test": "node ./node_modules/mocha/bin/mocha --recursive"
     },
