@@ -94,7 +94,7 @@ module.exports = {
 
             if ( !task ) {
                 // there are no tasks in queue
-                console.log('task-manager: there are no tasks in queue. Rescan in ' + _options.scanInterval + ' seconds.');
+                console.log('task-runner: there are no tasks in queue. Rescan in ' + _options.scanInterval + ' seconds.');
                 break;
             }
 
