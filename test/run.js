@@ -27,7 +27,7 @@ describe('.run', function() {
 
     it('process task with startAt in the past', function* () {
         let task = yield taskManager.schedule('test', 'task data', { startAt: new Date(Date.now() - 86400) }),
-            taskProcessorFactory = function(name) {
+            taskProcessorFactory = function() {
                 return {
                     run: function* () {}
                 }
@@ -44,7 +44,7 @@ describe('.run', function() {
 
     it('process task with startAt in the future', function* () {
         let task = yield taskManager.schedule('test', 'task data', { startAt: new Date(Date.now() + 86400) }),
-            taskProcessorFactory = function(name) {
+            taskProcessorFactory = function() {
                 return {
                     run: function* () {}
                 }
@@ -61,14 +61,14 @@ describe('.run', function() {
 
     it('process locked task with startAt in the past', function* () {
         let task = yield taskManager.schedule('test', 'task data', { startAt: new Date(Date.now() - 86400) }),
-            taskProcessorFactory = function(name) {
+            taskProcessorFactory = function() {
                 return {
                     run: function* () {}
                 }
             };
 
         // lock event
-        yield db.collection.findOneAndUpdate({ taskId: task.taskId }, { $set: { lockedAt: new Date() } } );
+        yield db._collection.findOneAndUpdate({ taskId: task.taskId }, { $set: { lockedAt: new Date() } } );
 
         yield taskManager.run({
             lockInterval: 60,
@@ -82,14 +82,14 @@ describe('.run', function() {
 
     it('process expired lockedAt task with startAt in past', function* () {
         let task = yield taskManager.schedule('test', 'task data', { startAt: new Date(Date.now() - 86400) }),
-            taskProcessorFactory = function(name) {
+            taskProcessorFactory = function() {
                 return {
                     run: function* () {}
                 }
             };
 
         // set expired lock
-        yield db.collection.findOneAndUpdate({ taskId: task.taskId }, { $set: { lockedAt: new Date(Date.now() - 70000) } } );
+        yield db._collection.findOneAndUpdate({ taskId: task.taskId }, { $set: { lockedAt: new Date(Date.now() - 70000) } } );
 
         yield taskManager.run({
             lockInterval: 60,
@@ -110,7 +110,7 @@ describe('.run', function() {
                 group:   'test',
                 startAt: new Date(Date.now() - 100)
             }),
-            taskProcessorFactory = function (name) {
+            taskProcessorFactory = function () {
                 return {
                     run: function*() {
                     }
@@ -136,7 +136,7 @@ describe('.run', function() {
             task2 = yield taskManager.schedule('test', 'task data', {
                 group:   'test'
             }),
-            taskProcessorFactory = function (name) {
+            taskProcessorFactory = function () {
                 return {
                     run: function*() {}
                 }
@@ -144,7 +144,7 @@ describe('.run', function() {
 
         // lock first task to make it blocker for second task
         // ensure that its createdAt is less then createdAt of second task
-        yield db.collection.findOneAndUpdate(
+        yield db._collection.findOneAndUpdate(
             { taskId: task1.taskId },
             {
                 $set: {
@@ -171,7 +171,7 @@ describe('.run', function() {
                 repeatEvery: 100,
                 startAt: new Date(0)
             }),
-            taskProcessorFactory = function(name) {
+            taskProcessorFactory = function() {
                 return {
                     run: function* () {}
                 }
@@ -195,7 +195,7 @@ describe('.run', function() {
         let task = yield taskManager.schedule('test', 'task data', {
                 startAt: new Date(0)
             }),
-            taskProcessorFactory = function(name) {
+            taskProcessorFactory = function() {
                 return {
                     run: function* () {
                         throw new Error('expected error');
@@ -208,7 +208,7 @@ describe('.run', function() {
         });
 
         // set expired lock and set startAt in the past
-        yield db.collection.findOneAndUpdate(
+        yield db._collection.findOneAndUpdate(
             { taskId: task.taskId },
             {
                 $set: {
@@ -234,7 +234,7 @@ describe('.run', function() {
         let task = yield taskManager.schedule('test', 'task data', {
                 startAt: new Date(0)
             }),
-            taskProcessorFactory = function(name) {
+            taskProcessorFactory = function() {
                 return {
                     run: function* () {
                         throw new Error('expected error');
@@ -247,7 +247,7 @@ describe('.run', function() {
         });
 
         // set expired lock and set startAt in the past
-        yield db.collection.findOneAndUpdate(
+        yield db._collection.findOneAndUpdate(
             { taskId: task.taskId },
             {
                 $set: {
