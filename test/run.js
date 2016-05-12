@@ -203,7 +203,7 @@ describe('.run', function() {
 
         assert.equal(null, task1.processedAt, 'Task was processed when it shouldn\'t');
         assert.equal(null, task2.processedAt, 'Task was processed when it shouldn\'t');
-        assert.equal(11000, task2.startAt.getTime(), 'Task was node rescheduled or was rescheduled on wrong time');
+        assert.equal(11000, task2.startAt.getTime(), 'Task was not rescheduled or was rescheduled on wrong time');
     });
 
     it('process repeatable task and check new scheduled date', function* () {
