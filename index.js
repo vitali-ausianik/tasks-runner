@@ -29,8 +29,8 @@ module.exports = {
 
     /**
      * @param {string} name - task name
-     * @param {string} data - task data, will be passed into task as an argument
-     * @param {object} [options]
+     * @param {*} data - task data, will be passed into task as an argument
+     * @param {Object} [options]
      * @param {string} [options.taskId] - by default uuid will be generated
      * @param {string} [options.group] - null by default
      * @param {Date}   [options.startAt] - in UTC (current date by default - will be executed immediately)
