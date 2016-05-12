@@ -116,7 +116,7 @@ module.exports = {
                 yield db.markTaskFailed(task.taskId, err.message);
 
                 // reschedule task in (retries+1) minutes
-                let delta = (task.retries + 1) * 1000,
+                let delta = (task.retries + 1) * 60 * 1000,
                     scheduleAt = new Date(Date.now() + delta);
 
                 yield db.rescheduleTask(task.taskId, scheduleAt);

@@ -268,7 +268,7 @@ describe('.run', function() {
         assert.equal(2, task.retries, 'Task was failed twice but "retries" counter is ' + task.retries);
         assert.equal('expected error', task.errorMsg);
 
-        let newStartAt = Date.now() + 2000;
+        let newStartAt = Date.now() + (60 * 2000);
         // assume infelicity of newStartAt is 50 milliseconds
         let startAtDelta = Math.abs(task.startAt.getTime() - newStartAt);
         assert(startAtDelta < 50, 'Difference between old startAt and expected one is ' + startAtDelta + ' milliseconds.');

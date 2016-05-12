@@ -1,13 +1,16 @@
 {
-  "name": "application-name",
-  "version": "0.0.1",
-  "dependencies": {
-    "co": "^4.6.0",
-    "mongodb": "^2.1.18",
-    "uuid": "^2.0.2"
-  },
-  "devDependencies": {
-    "co-mocha": "^1.1.2",
-    "mocha": "^2.4.5"
-  }
+    "name": "application-name",
+    "version": "0.0.1",
+    "scripts": {
+        "test": "node ./node_modules/mocha/bin/mocha --recursive"
+    },
+    "dependencies": {
+        "co": "^4.6.0",
+        "mongodb": "^2.1.18",
+        "uuid": "^2.0.2"
+    },
+    "devDependencies": {
+        "co-mocha": "^1.1.2",
+        "mocha": "^2.4.5"
+    }
 }
