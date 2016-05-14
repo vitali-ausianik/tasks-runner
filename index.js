@@ -80,6 +80,7 @@ module.exports = {
         let task,
             taskProcessor,
             taskResult,
+            previousTask,
             tasksPerCycle = 1000,
             taskIndexInCycle = 0,
             _options = Object.assign({
@@ -90,6 +91,7 @@ module.exports = {
 
         // process tasks until it will be finished or until it will process "tasksPerCycle" items
         do {
+            previousTask = null;
             taskIndexInCycle++;
             task = yield db.findTaskToProcess(_options.lockInterval);
 
@@ -100,19 +102,21 @@ module.exports = {
             }
 
             if ( task.group ) {
-                let taskBlocker = yield db.findTaskBlocker(task);
-                if ( taskBlocker ) {
-                    // if blocker' startAt greater than startAt of current task - reschedule current task on new date
-                    if (taskBlocker.startAt.getTime() > task.startAt.getTime()) {
-                        yield db.rescheduleTask(task.taskId, new Date(taskBlocker.startAt.getTime() + 1000));
+                previousTask = yield db.findPreviousTask(task);
+                // check if previous task still was not processed - it means that current task is blocked by previous one
+                if ( previousTask && previousTask.processedAt === null ) {
+                    // if previousTask' startAt value greater than startAt of current task - reschedule current task on new date
+                    if (previousTask.startAt.getTime() > task.startAt.getTime()) {
+                        yield db.rescheduleTask(task.taskId, new Date(previousTask.startAt.getTime() + 1000));
                     }
                     continue;
                 }
             }
 
             try {
+                let previousTaskResult = previousTask ? previousTask.result : null;
                 taskProcessor = _options.taskProcessorFactory(task.name);
-                taskResult = yield taskProcessor.run(task.data);
+                taskResult = yield taskProcessor.run(task.data, previousTaskResult);
 
             } catch (err) {
                 // something goes wrong with or within task processor - mark task as failed
