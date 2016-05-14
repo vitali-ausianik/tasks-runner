@@ -25,11 +25,13 @@ describe('.run', function() {
         assert.equal('function', typeof taskManager.run, 'Can not find function .run()');
     });
 
-    it('process task with startAt in the past', function* () {
+    it('process task with startAt in the past (should be processed)', function* () {
         let task = yield taskManager.schedule('test', 'task data', { startAt: new Date(Date.now() - 86400) }),
             taskProcessorFactory = function() {
                 return {
-                    run: function* () {}
+                    run: function* () {
+                        return 'expected';
+                    }
                 }
             };
 
@@ -40,9 +42,10 @@ describe('.run', function() {
         task = yield db.findTask({ taskId: task.taskId });
 
         assert.notEqual(null, task.processedAt, 'Task was not processed when it should');
+        assert.equal('expected', task.result, 'Task\' result was not stored properly');
     });
 
-    it('process task with startAt in the future', function* () {
+    it('process task with startAt in the future (should not be processed)', function* () {
         let task = yield taskManager.schedule('test', 'task data', { startAt: new Date(Date.now() + 86400) }),
             taskProcessorFactory = function() {
                 return {
@@ -59,7 +62,7 @@ describe('.run', function() {
         assert.equal(null, task.processedAt, 'Task was processed when it shouldn\'t');
     });
 
-    it('process locked task with startAt in the past', function* () {
+    it('process locked task with startAt in the past (should not be processed)', function* () {
         let task = yield taskManager.schedule('test', 'task data', { startAt: new Date(Date.now() - 86400) }),
             taskProcessorFactory = function() {
                 return {
@@ -80,7 +83,7 @@ describe('.run', function() {
         assert.equal(null, task.processedAt, 'Task was processed when it shouldn\'t');
     });
 
-    it('process expired lockedAt task with startAt in past', function* () {
+    it('process expired lockedAt task with startAt in the past (should be processed)', function* () {
         let task = yield taskManager.schedule('test', 'task data', { startAt: new Date(Date.now() - 86400) }),
             taskProcessorFactory = function() {
                 return {
@@ -101,19 +104,16 @@ describe('.run', function() {
         assert.notEqual(null, task.processedAt, 'Task was not processed when it should');
     });
 
-    it('process two tasks within specified group', function* () {
-        let task1 = yield taskManager.schedule('test', 'task data', {
-                group:   'test',
-                startAt: new Date(Date.now() - 200)
+    it('process two tasks within specified group (both should be processed)', function* () {
+        let task1 = yield taskManager.schedule('test 1', 'task data', {
+                group:   'test'
             }),
-            task2 = yield taskManager.schedule('test', 'task data', {
-                group:   'test',
-                startAt: new Date(Date.now() - 100)
+            task2 = yield taskManager.schedule('test 2', 'task data', {
+                group:   'test'
             }),
             taskProcessorFactory = function () {
                 return {
-                    run: function*() {
-                    }
+                    run: function*() {}
                 }
             };
 
@@ -129,11 +129,11 @@ describe('.run', function() {
         assert.notEqual(null, task2.processedAt, 'Task was not processed when it should');
     });
 
-    it('process blocked task with specified group', function* () {
-        let task1 = yield taskManager.schedule('test', 'task data', {
+    it('process blocked task with specified group (should not be processed)', function* () {
+        let task1 = yield taskManager.schedule('test 1', 'task data', {
                 group:   'test'
             }),
-            task2 = yield taskManager.schedule('test', 'task data', {
+            task2 = yield taskManager.schedule('test 2', 'task data', {
                 group:   'test'
             }),
             taskProcessorFactory = function () {
@@ -143,13 +143,11 @@ describe('.run', function() {
             };
 
         // lock first task to make it blocker for second task
-        // ensure that its createdAt is less then createdAt of second task
         yield db._collection.findOneAndUpdate(
             { taskId: task1.taskId },
             {
                 $set: {
-                    lockedAt: new Date(),
-                    createdAt: new Date(task1.createdAt.getTime() - 1000)
+                    lockedAt: new Date()
                 }
             }
         );
@@ -182,13 +180,11 @@ describe('.run', function() {
             };
 
         // lock first task to make it blocker for second task
-        // ensure that its createdAt is less then createdAt of second task
         yield db._collection.findOneAndUpdate(
             { taskId: task1.taskId },
             {
                 $set: {
-                    lockedAt: new Date(),
-                    createdAt: new Date(task1.createdAt.getTime() - 1000)
+                    lockedAt: new Date()
                 }
             }
         );
@@ -312,5 +308,45 @@ describe('.run', function() {
         // assume infelicity of newStartAt is 50 milliseconds
         let startAtDelta = Math.abs(task.startAt.getTime() - newStartAt);
         assert(startAtDelta < 50, 'Difference between old startAt and expected one is ' + startAtDelta + ' milliseconds.');
+    });
+
+    it('skip task that is blocked by another', function* () {
+        // task2 will be skipped because of not processed task1, task3 should be processed
+        let task1 = yield taskManager.schedule('test 1', 'task data', {
+                group:   'test'
+            }),
+            task2 = yield taskManager.schedule('test 2', 'task data', {
+                group:   'test'
+            }),
+            task3 = yield taskManager.schedule('test 3', 'task data', {
+            }),
+            taskProcessorFactory = function () {
+                return {
+                    run: function*() {}
+                }
+            };
+
+        // lock first task to make it blocker for second task
+        yield db._collection.findOneAndUpdate(
+            { taskId: task1.taskId },
+            {
+                $set: {
+                    lockedAt: new Date()
+                }
+            }
+        );
+
+        yield taskManager.run({
+            lockInterval: 60,
+            taskProcessorFactory: taskProcessorFactory
+        });
+
+        task1 = yield db.findTask({ taskId: task1.taskId });
+        task2 = yield db.findTask({ taskId: task2.taskId });
+        task3 = yield db.findTask({ taskId: task3.taskId });
+
+        assert.equal(null, task1.processedAt, 'Task was processed when it shouldn\'t');
+        assert.equal(null, task2.processedAt, 'Task was processed when it shouldn\'t');
+        assert.notEqual(null, task3.processedAt, 'Task was not processed when it should');
     });
 });

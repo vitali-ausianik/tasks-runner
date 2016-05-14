@@ -23,7 +23,7 @@ describe('.schedule', function() {
     });
 
     it('function present', function() {
-        assert.equal('function', typeof taskManager.schedule, 'Can not find function .addTask()');
+        assert('function', typeof taskManager.schedule, 'Can not find function .addTask()');
     });
 
     it('schedule one task', function* () {
@@ -188,8 +188,8 @@ describe('.schedule', function() {
 
         assert(result1, 'Expect created task');
         assert(result2, 'Expect created task');
-        assert(result1.name, 'test');
-        assert(result2.name, 'test');
+        assert.equal(result1.name, 'test');
+        assert.equal(result2.name, 'test');
     });
 
     it('schedule two tasks within one group', function* () {
@@ -199,8 +199,8 @@ describe('.schedule', function() {
 
         assert(result1, 'Expect created task');
         assert(result2, 'Expect created task');
-        assert(result1.group, group);
-        assert(result2.group, group);
+        assert.equal(result1.group, group);
+        assert.equal(result2.group, group);
     });
 
     it('schedule two tasks within two groups', function* () {
@@ -209,7 +209,7 @@ describe('.schedule', function() {
 
         assert(result1, 'Expect created task');
         assert(result2, 'Expect created task');
-        assert(result1.group, 'group 1');
-        assert(result2.group, 'group 2');
+        assert.equal(result1.group, 'group 1');
+        assert.equal(result2.group, 'group 2');
     });
 });

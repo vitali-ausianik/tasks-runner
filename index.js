@@ -79,6 +79,7 @@ module.exports = {
     run: function* (options) {
         let task,
             taskProcessor,
+            taskResult,
             tasksPerCycle = 1000,
             taskIndexInCycle = 0,
             _options = Object.assign({
@@ -99,19 +100,19 @@ module.exports = {
             }
 
             if ( task.group ) {
-                let taskBlocker = yield db.findTaskBlocker(task.group, task.createdAt);
+                let taskBlocker = yield db.findTaskBlocker(task);
                 if ( taskBlocker ) {
-                    // if blocker' startAt greater than startAt of current - reschedule current task on new date
+                    // if blocker' startAt greater than startAt of current task - reschedule current task on new date
                     if (taskBlocker.startAt.getTime() > task.startAt.getTime()) {
                         yield db.rescheduleTask(task.taskId, new Date(taskBlocker.startAt.getTime() + 1000));
                     }
-                    break;
+                    continue;
                 }
             }
 
             try {
                 taskProcessor = _options.taskProcessorFactory(task.name);
-                yield taskProcessor.run(task.data);
+                taskResult = yield taskProcessor.run(task.data);
 
             } catch (err) {
                 // something goes wrong with or within task processor - mark task as failed
@@ -132,8 +133,8 @@ module.exports = {
                 yield db.rescheduleTask(task.taskId, scheduleAt);
 
             } else {
-                // task is not repeatable, finish it
-                yield db.markTaskProcessed(task.taskId);
+                // task is not repeatable, finish it and save its result
+                yield db.markTaskProcessed(task.taskId, taskResult);
             }
 
         } while (taskIndexInCycle < tasksPerCycle);
