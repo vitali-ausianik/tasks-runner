@@ -18,13 +18,15 @@ co(function* () {
         let myFactory = function(name) {
             // name contains task.name
             // use it to decide what processor should you return to process this task
-            console.log(name);
+            console.log('Task name: ' + name);
             return {
-                run: function* (data) {
+                run: function* (data, previousTaskResult) {
                     // process task here
                     // data contains task.data
+                    // previousTaskResult contains task.result of previous task in group or null
                     // throw Error in case if task shouldn't be marked as successful
-                    console.log(data);
+                    console.log('Passed data: ' + data);
+                    console.log('Result of previous task in group: ' + previousTaskResult);
                 }
             }
         };
