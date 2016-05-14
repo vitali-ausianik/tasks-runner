@@ -26,7 +26,7 @@ describe('.run', function() {
     });
 
     it('process task with startAt in the past (should be processed)', function* () {
-        let taskNamePassedToProcessor,
+        let taskNamePassedToProcessor = null,
             task = yield taskManager.schedule('test', 'task data', { startAt: new Date(Date.now() - 86400) }),
             taskProcessorFactory = function(name) {
                 taskNamePassedToProcessor = name;
@@ -354,9 +354,9 @@ describe('.run', function() {
     });
 
     it('test arguments for taskProcessorFactory().run()', function* () {
-        let task1ProcessorRunArgs,
-            task2ProcessorRunArgs,
-            task3ProcessorRunArgs,
+        let task1ProcessorRunArgs = null,
+            task2ProcessorRunArgs = null,
+            task3ProcessorRunArgs = null,
             task1 = yield taskManager.schedule('test 1', 'task data 1', {
                 group:   'test'
             }),
@@ -409,6 +409,7 @@ describe('.run', function() {
 
         assert.notEqual(null, task1.processedAt, 'Task was not processed when it should');
         assert.notEqual(null, task2.processedAt, 'Task was not processed when it should');
+        assert.notEqual(null, task3.processedAt, 'Task was not processed when it should');
         assert.deepEqual(task1ProcessorRunArgs, [ 'task data 1', null ]);
         assert.deepEqual(task2ProcessorRunArgs, [ 'task data 2', 'expected result of task 1' ]);
         assert.deepEqual(task3ProcessorRunArgs, [ 'task data 3', 'expected result of task 2' ]);
