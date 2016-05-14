@@ -406,6 +406,7 @@ describe('.run', function() {
 
         task1 = yield db.findTask({ taskId: task1.taskId });
         task2 = yield db.findTask({ taskId: task2.taskId });
+        task3 = yield db.findTask({ taskId: task3.taskId });
 
         assert.notEqual(null, task1.processedAt, 'Task was not processed when it should');
         assert.notEqual(null, task2.processedAt, 'Task was not processed when it should');
