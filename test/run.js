@@ -5,6 +5,7 @@ require('co-mocha');
 
 let taskManager = require('../index'),
     db = require('../lib/db'),
+    sinon = require('sinon'),
     assert = require('assert');
 
 describe('.run', function() {
@@ -414,5 +415,72 @@ describe('.run', function() {
         assert.deepEqual(task1ProcessorRunArgs, [ 'task data 1', null ]);
         assert.deepEqual(task2ProcessorRunArgs, [ 'task data 2', 'expected result of task 1' ]);
         assert.deepEqual(task3ProcessorRunArgs, [ 'task data 3', 'expected result of task 2' ]);
+    });
+
+    it('test arguments for taskProcessorFactory().run() in case of some failed task in group', function* () {
+        let task1ProcessorRunArgs = null,
+            task2ProcessorRunArgs = null,
+            task3ProcessorRunArgs = null,
+            task1 = yield taskManager.schedule('test 1', 'task data 1', {
+                group:   'test'
+            }),
+            task2 = yield taskManager.schedule('test 2', 'task data 2', {
+                group:   'test'
+            }),
+            task3 = yield taskManager.schedule('test 3', 'task data 3', {
+                group:   'test'
+            }),
+            task1Processor = {
+                run: function* () {
+                    task1ProcessorRunArgs = Array.prototype.slice.call(arguments);
+                    throw Error('Some error');
+                }
+            },
+            task2Processor = {
+                run: function* () {
+                    task2ProcessorRunArgs = Array.prototype.slice.call(arguments);
+                    return 'expected result of task 2';
+                }
+            },
+            task3Processor = {
+                run: function* () {
+                    task3ProcessorRunArgs = Array.prototype.slice.call(arguments);
+                    return 'expected result of task 3';
+                }
+            },
+            taskProcessorFactory = function (taskName) {
+                switch (taskName) {
+                    case 'test 1':
+                        return task1Processor;
+
+                    case 'test 2':
+                        return task2Processor;
+
+                    case 'test 3':
+                        return task3Processor;
+                }
+
+                throw new Error('Wrong task name');
+            };
+
+        let findTaskToProcessSpy = sinon.spy(db, 'findPreviousTask');
+
+        yield taskManager.run({
+            lockInterval: 60,
+            taskProcessorFactory: taskProcessorFactory
+        });
+        db.findPreviousTask.restore();
+
+        task1 = yield db.findTask({ taskId: task1.taskId });
+        task2 = yield db.findTask({ taskId: task2.taskId });
+        task3 = yield db.findTask({ taskId: task3.taskId });
+
+        assert.equal(null, task1.processedAt, 'Task was processed when it should not');
+        assert.equal(null, task2.processedAt, 'Task was processed when it should not');
+        assert.equal(null, task3.processedAt, 'Task was processed when it should not');
+        assert.deepEqual(task1ProcessorRunArgs, [ 'task data 1', null ]);
+        assert.equal(task2ProcessorRunArgs, null); // task was skipped
+        assert.equal(task3ProcessorRunArgs, null); // task was skipped
+        assert(findTaskToProcessSpy.calledThrice, 'Function was not called when it should');
     });
 });

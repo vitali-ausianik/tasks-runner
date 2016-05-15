@@ -128,7 +128,7 @@ module.exports = {
                     scheduleAt = new Date(Date.now() + delta);
 
                 yield db.rescheduleTask(task.taskId, scheduleAt);
-                break;
+                continue;
             }
 
             if ( task.repeatEvery > 0 ) {
