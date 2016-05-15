@@ -116,7 +116,14 @@ module.exports = {
             try {
                 let previousTaskResult = previousTask ? previousTask.result : null;
                 taskProcessor = _options.taskProcessorFactory(task.name);
-                taskResult = yield taskProcessor.run(task.data, previousTaskResult);
+                // use taskProcessor as is if it is a function
+                // in other case execute taskProcessor.run()
+                if ('function' === typeof taskProcessor) {
+                    taskResult = yield taskProcessor(task.data, previousTaskResult);
+
+                } else {
+                    taskResult = yield taskProcessor.run(task.data, previousTaskResult);
+                }
 
             } catch (err) {
                 // something goes wrong with or within task processor - mark task as failed

@@ -417,7 +417,7 @@ describe('.run', function() {
         assert.deepEqual(task3ProcessorRunArgs, [ 'task data 3', 'expected result of task 2' ]);
     });
 
-    it('test arguments for taskProcessorFactory().run() in case of some failed task in group', function* () {
+    it('test arguments for taskProcessor.run() in case of some failed task in group', function* () {
         let task1ProcessorRunArgs = null,
             task2ProcessorRunArgs = null,
             task3ProcessorRunArgs = null,
@@ -482,5 +482,62 @@ describe('.run', function() {
         assert.equal(task2ProcessorRunArgs, null); // task was skipped
         assert.equal(task3ProcessorRunArgs, null); // task was skipped
         assert(findTaskToProcessSpy.calledThrice, 'Function was not called when it should');
+    });
+
+    it('test taskProcessor as a function', function* () {
+        let task1ProcessorRunArgs = null,
+            task2ProcessorRunArgs = null,
+            task3ProcessorRunArgs = null,
+            task1 = yield taskManager.schedule('test 1', 'task data 1', {
+                group:   'test'
+            }),
+            task2 = yield taskManager.schedule('test 2', 'task data 2', {
+                group:   'test'
+            }),
+            task3 = yield taskManager.schedule('test 3', 'task data 3', {
+                group:   'test'
+            }),
+            task1Processor = function* () {
+                task1ProcessorRunArgs = Array.prototype.slice.call(arguments);
+                return 'expected result of task 1';
+            },
+            task2Processor = function* () {
+                task2ProcessorRunArgs = Array.prototype.slice.call(arguments);
+                return 'expected result of task 2';
+            },
+            task3Processor = function* () {
+                task3ProcessorRunArgs = Array.prototype.slice.call(arguments);
+                return 'expected result of task 3';
+            },
+            taskProcessorFactory = function (taskName) {
+                switch (taskName) {
+                    case 'test 1':
+                        return task1Processor;
+
+                    case 'test 2':
+                        return task2Processor;
+
+                    case 'test 3':
+                        return task3Processor;
+                }
+
+                throw new Error('Wrong task name');
+            };
+
+        yield taskManager.run({
+            lockInterval: 60,
+            taskProcessorFactory: taskProcessorFactory
+        });
+
+        task1 = yield db.findTask({ taskId: task1.taskId });
+        task2 = yield db.findTask({ taskId: task2.taskId });
+        task3 = yield db.findTask({ taskId: task3.taskId });
+
+        assert.notEqual(null, task1.processedAt, 'Task was not processed when it should');
+        assert.notEqual(null, task2.processedAt, 'Task was not processed when it should');
+        assert.notEqual(null, task3.processedAt, 'Task was not processed when it should');
+        assert.deepEqual(task1ProcessorRunArgs, [ 'task data 1', null ]);
+        assert.deepEqual(task2ProcessorRunArgs, [ 'task data 2', 'expected result of task 1' ]);
+        assert.deepEqual(task3ProcessorRunArgs, [ 'task data 3', 'expected result of task 2' ]);
     });
 });
