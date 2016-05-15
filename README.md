@@ -1,4 +1,4 @@
-Task Runner
+Task Runner [![Build Status](https://travis-ci.com/vitali-ausianik/task-runner.svg?token=LqnKjCz4apWQtEE5ynMc&branch=master)](https://travis-ci.com/vitali-ausianik/task-runner)
 ============
 Could resolve following issues:
 
