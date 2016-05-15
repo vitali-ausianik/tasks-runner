@@ -35,12 +35,12 @@ options.group       | string | optional | Group of task. By default - null (disa
 ### .run(options)
 Execute scheduled tasks.
 
-Parameter                    | Type   | Required | Description
----------------------------- | ------ | -------- | -----------
-options                      | Object | required |
-options.scanInterval         | number | optional | Period of scanning for ready to execute tasks, in seconds. By default - 60 seconds.
-options.lockInterval         | number | optional | Max time for task to be finished or failed, in seconds. By default - 60 seconds.
-options.taskProcessorFactory | number | optional | Should return task processor for provided task name (via first argument). Task processor could be a function or an object with .run() method. As an argument task processor receives task data. Also it can receive result of previous task execution in case if both tasks are members of the same group.
+Parameter                    | Type     | Required | Description
+---------------------------- | -------- | -------- | -----------
+options                      | Object   | required |
+options.scanInterval         | number   | optional | Period of scanning for ready to execute tasks, in seconds. By default - 60 seconds.
+options.lockInterval         | number   | optional | Max time for task to be finished or failed, in seconds. By default - 60 seconds.
+options.taskProcessorFactory | function | optional | Should return task processor for provided task name (via first argument). Task processor could be a function or an object with .run() method. As an argument task processor receives task data. Also it can receive result of previous task execution in case if both tasks are members of the same group.
 
 [See examples](examples/worker.js)
 
