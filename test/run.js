@@ -3,19 +3,19 @@
 require('mocha');
 require('co-mocha');
 
-let taskManager = require('../index'),
+let taskRunner = require('../index'),
     db = require('../lib/db'),
     sinon = require('sinon'),
     assert = require('assert');
 
 describe('.run', function() {
     before(function* () {
-        yield taskManager.connect('mongodb://localhost:27017/test');
+        yield taskRunner.connect('mongodb://localhost:27017/test');
         yield db.remove({});
     });
 
     after(function* () {
-        yield taskManager.close();
+        yield taskRunner.close();
     });
 
     beforeEach(function* () {
@@ -23,12 +23,12 @@ describe('.run', function() {
     });
 
     it('function present', function() {
-        assert.equal('function', typeof taskManager.run, 'Can not find function .run()');
+        assert.equal('function', typeof taskRunner.run, 'Can not find function .run()');
     });
 
     it('process task with startAt in the past (should be processed)', function* () {
         let taskNamePassedToProcessor = null,
-            task = yield taskManager.schedule('test', 'task data', { startAt: new Date(Date.now() - 86400) }),
+            task = yield taskRunner.schedule('test', 'task data', { startAt: new Date(Date.now() - 86400) }),
             taskProcessorFactory = function(name) {
                 taskNamePassedToProcessor = name;
                 return {
@@ -38,7 +38,7 @@ describe('.run', function() {
                 }
             };
 
-        yield taskManager.run({
+        yield taskRunner.run({
             taskProcessorFactory: taskProcessorFactory
         });
 
@@ -50,14 +50,14 @@ describe('.run', function() {
     });
 
     it('process task with startAt in the future (should not be processed)', function* () {
-        let task = yield taskManager.schedule('test', 'task data', { startAt: new Date(Date.now() + 86400) }),
+        let task = yield taskRunner.schedule('test', 'task data', { startAt: new Date(Date.now() + 86400) }),
             taskProcessorFactory = function() {
                 return {
                     run: function* () {}
                 }
             };
 
-        yield taskManager.run({
+        yield taskRunner.run({
             taskProcessorFactory: taskProcessorFactory
         });
 
@@ -67,7 +67,7 @@ describe('.run', function() {
     });
 
     it('process locked task with startAt in the past (should not be processed)', function* () {
-        let task = yield taskManager.schedule('test', 'task data', { startAt: new Date(Date.now() - 86400) }),
+        let task = yield taskRunner.schedule('test', 'task data', { startAt: new Date(Date.now() - 86400) }),
             taskProcessorFactory = function() {
                 return {
                     run: function* () {}
@@ -77,7 +77,7 @@ describe('.run', function() {
         // lock event
         yield db._collection.findOneAndUpdate({ taskId: task.taskId }, { $set: { lockedAt: new Date() } } );
 
-        yield taskManager.run({
+        yield taskRunner.run({
             lockInterval: 60,
             taskProcessorFactory: taskProcessorFactory
         });
@@ -88,7 +88,7 @@ describe('.run', function() {
     });
 
     it('process expired lockedAt task with startAt in the past (should be processed)', function* () {
-        let task = yield taskManager.schedule('test', 'task data', { startAt: new Date(Date.now() - 86400) }),
+        let task = yield taskRunner.schedule('test', 'task data', { startAt: new Date(Date.now() - 86400) }),
             taskProcessorFactory = function() {
                 return {
                     run: function* () {}
@@ -98,7 +98,7 @@ describe('.run', function() {
         // set expired lock
         yield db._collection.findOneAndUpdate({ taskId: task.taskId }, { $set: { lockedAt: new Date(Date.now() - 70000) } } );
 
-        yield taskManager.run({
+        yield taskRunner.run({
             lockInterval: 60,
             taskProcessorFactory: taskProcessorFactory
         });
@@ -109,10 +109,10 @@ describe('.run', function() {
     });
 
     it('process two tasks within specified group (both should be processed)', function* () {
-        let task1 = yield taskManager.schedule('test 1', 'task data', {
+        let task1 = yield taskRunner.schedule('test 1', 'task data', {
                 group:   'test'
             }),
-            task2 = yield taskManager.schedule('test 2', 'task data', {
+            task2 = yield taskRunner.schedule('test 2', 'task data', {
                 group:   'test'
             }),
             taskProcessorFactory = function () {
@@ -121,7 +121,7 @@ describe('.run', function() {
                 }
             };
 
-        yield taskManager.run({
+        yield taskRunner.run({
             lockInterval: 60,
             taskProcessorFactory: taskProcessorFactory
         });
@@ -134,10 +134,10 @@ describe('.run', function() {
     });
 
     it('process blocked task with specified group (should not be processed)', function* () {
-        let task1 = yield taskManager.schedule('test 1', 'task data', {
+        let task1 = yield taskRunner.schedule('test 1', 'task data', {
                 group:   'test'
             }),
-            task2 = yield taskManager.schedule('test 2', 'task data', {
+            task2 = yield taskRunner.schedule('test 2', 'task data', {
                 group:   'test'
             }),
             taskProcessorFactory = function () {
@@ -156,7 +156,7 @@ describe('.run', function() {
             }
         );
 
-        yield taskManager.run({
+        yield taskRunner.run({
             lockInterval: 60,
             taskProcessorFactory: taskProcessorFactory
         });
@@ -169,11 +169,11 @@ describe('.run', function() {
     });
 
     it('process blocked task with specified group and check that it was rescheduled on new time', function* () {
-        let task1 = yield taskManager.schedule('test', 'task data', {
+        let task1 = yield taskRunner.schedule('test', 'task data', {
                 startAt: new Date(10000),
                 group:   'test'
             }),
-            task2 = yield taskManager.schedule('test', 'task data', {
+            task2 = yield taskRunner.schedule('test', 'task data', {
                 startAt: new Date(1000),
                 group:   'test'
             }),
@@ -193,7 +193,7 @@ describe('.run', function() {
             }
         );
 
-        yield taskManager.run({
+        yield taskRunner.run({
             lockInterval: 60,
             taskProcessorFactory: taskProcessorFactory
         });
@@ -207,7 +207,7 @@ describe('.run', function() {
     });
 
     it('process repeatable task and check new scheduled date', function* () {
-        let task = yield taskManager.schedule('test', 'task data', {
+        let task = yield taskRunner.schedule('test', 'task data', {
                 repeatEvery: 100,
                 startAt: new Date(0)
             }),
@@ -217,7 +217,7 @@ describe('.run', function() {
                 }
             };
 
-        yield taskManager.run({
+        yield taskRunner.run({
             lockInterval: 60,
             taskProcessorFactory: taskProcessorFactory
         });
@@ -232,7 +232,7 @@ describe('.run', function() {
     });
 
     it('run failed task twice and check "retries" field (should be 2)', function* () {
-        let task = yield taskManager.schedule('test', 'task data', {
+        let task = yield taskRunner.schedule('test', 'task data', {
                 startAt: new Date(0)
             }),
             taskProcessorFactory = function() {
@@ -243,7 +243,7 @@ describe('.run', function() {
                 }
             };
 
-        yield taskManager.run({
+        yield taskRunner.run({
             taskProcessorFactory: taskProcessorFactory
         });
 
@@ -258,7 +258,7 @@ describe('.run', function() {
             }
         );
 
-        yield taskManager.run({
+        yield taskRunner.run({
             lockInterval: 1,
             taskProcessorFactory: taskProcessorFactory
         });
@@ -271,7 +271,7 @@ describe('.run', function() {
     });
 
     it('run failed task twice and check "startAt" field (should be in two minutes)', function* () {
-        let task = yield taskManager.schedule('test', 'task data', {
+        let task = yield taskRunner.schedule('test', 'task data', {
                 startAt: new Date(0)
             }),
             taskProcessorFactory = function() {
@@ -282,7 +282,7 @@ describe('.run', function() {
                 }
             };
 
-        yield taskManager.run({
+        yield taskRunner.run({
             taskProcessorFactory: taskProcessorFactory
         });
 
@@ -297,7 +297,7 @@ describe('.run', function() {
             }
         );
 
-        yield taskManager.run({
+        yield taskRunner.run({
             lockInterval: 1,
             taskProcessorFactory: taskProcessorFactory
         });
@@ -316,13 +316,13 @@ describe('.run', function() {
 
     it('skip task that is blocked by another', function* () {
         // task2 will be skipped because of not processed task1, task3 should be processed
-        let task1 = yield taskManager.schedule('test 1', 'task data', {
+        let task1 = yield taskRunner.schedule('test 1', 'task data', {
                 group:   'test'
             }),
-            task2 = yield taskManager.schedule('test 2', 'task data', {
+            task2 = yield taskRunner.schedule('test 2', 'task data', {
                 group:   'test'
             }),
-            task3 = yield taskManager.schedule('test 3', 'task data', {
+            task3 = yield taskRunner.schedule('test 3', 'task data', {
             }),
             taskProcessorFactory = function () {
                 return {
@@ -340,7 +340,7 @@ describe('.run', function() {
             }
         );
 
-        yield taskManager.run({
+        yield taskRunner.run({
             lockInterval: 60,
             taskProcessorFactory: taskProcessorFactory
         });
@@ -358,13 +358,13 @@ describe('.run', function() {
         let task1ProcessorRunArgs = null,
             task2ProcessorRunArgs = null,
             task3ProcessorRunArgs = null,
-            task1 = yield taskManager.schedule('test 1', 'task data 1', {
+            task1 = yield taskRunner.schedule('test 1', 'task data 1', {
                 group:   'test'
             }),
-            task2 = yield taskManager.schedule('test 2', 'task data 2', {
+            task2 = yield taskRunner.schedule('test 2', 'task data 2', {
                 group:   'test'
             }),
-            task3 = yield taskManager.schedule('test 3', 'task data 3', {
+            task3 = yield taskRunner.schedule('test 3', 'task data 3', {
                 group:   'test'
             }),
             task1Processor = {
@@ -400,7 +400,7 @@ describe('.run', function() {
                 throw new Error('Wrong task name');
             };
 
-        yield taskManager.run({
+        yield taskRunner.run({
             lockInterval: 60,
             taskProcessorFactory: taskProcessorFactory
         });
@@ -421,13 +421,13 @@ describe('.run', function() {
         let task1ProcessorRunArgs = null,
             task2ProcessorRunArgs = null,
             task3ProcessorRunArgs = null,
-            task1 = yield taskManager.schedule('test 1', 'task data 1', {
+            task1 = yield taskRunner.schedule('test 1', 'task data 1', {
                 group:   'test'
             }),
-            task2 = yield taskManager.schedule('test 2', 'task data 2', {
+            task2 = yield taskRunner.schedule('test 2', 'task data 2', {
                 group:   'test'
             }),
-            task3 = yield taskManager.schedule('test 3', 'task data 3', {
+            task3 = yield taskRunner.schedule('test 3', 'task data 3', {
                 group:   'test'
             }),
             task1Processor = {
@@ -465,7 +465,7 @@ describe('.run', function() {
 
         let findTaskToProcessSpy = sinon.spy(db, 'findPreviousTask');
 
-        yield taskManager.run({
+        yield taskRunner.run({
             lockInterval: 60,
             taskProcessorFactory: taskProcessorFactory
         });
@@ -488,13 +488,13 @@ describe('.run', function() {
         let task1ProcessorRunArgs = null,
             task2ProcessorRunArgs = null,
             task3ProcessorRunArgs = null,
-            task1 = yield taskManager.schedule('test 1', 'task data 1', {
+            task1 = yield taskRunner.schedule('test 1', 'task data 1', {
                 group:   'test'
             }),
-            task2 = yield taskManager.schedule('test 2', 'task data 2', {
+            task2 = yield taskRunner.schedule('test 2', 'task data 2', {
                 group:   'test'
             }),
-            task3 = yield taskManager.schedule('test 3', 'task data 3', {
+            task3 = yield taskRunner.schedule('test 3', 'task data 3', {
                 group:   'test'
             }),
             task1Processor = function* () {
@@ -524,7 +524,7 @@ describe('.run', function() {
                 throw new Error('Wrong task name');
             };
 
-        yield taskManager.run({
+        yield taskRunner.run({
             lockInterval: 60,
             taskProcessorFactory: taskProcessorFactory
         });
@@ -539,5 +539,23 @@ describe('.run', function() {
         assert.deepEqual(task1ProcessorRunArgs, [ 'task data 1', null ]);
         assert.deepEqual(task2ProcessorRunArgs, [ 'task data 2', 'expected result of task 1' ]);
         assert.deepEqual(task3ProcessorRunArgs, [ 'task data 3', 'expected result of task 2' ]);
+    });
+
+    it('test scheduling of scanning with uncaught error', function* () {
+        let clock = sinon.useFakeTimers();
+
+        // run with period of 30 seconds
+        yield taskRunner.run({ scanInterval: 30 });
+
+        // next iterations throw an error
+        let findTaskToProcessStub = sinon.stub(db, 'findTaskToProcess').throws(new Error('expected error'));
+
+        // move timer forward to trigger 3 iterations
+        clock.tick(90000);
+
+        assert(findTaskToProcessStub.called);
+        assert.equal(findTaskToProcessStub.callCount, 3);
+        db.findTaskToProcess.restore();
+        clock.restore();
     });
 });

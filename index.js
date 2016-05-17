@@ -89,68 +89,75 @@ module.exports = {
                 taskProcessorFactory: require
             }, options);
 
-        // process tasks until it will be finished or until it will process "tasksPerCycle" items
-        do {
-            previousTask = null;
-            taskIndexInCycle++;
-            task = yield db.findTaskToProcess(_options.lockInterval);
+        try {
+            // process tasks until it will be finished or until it will process "tasksPerCycle" items
+            do {
+                previousTask = null;
+                taskIndexInCycle++;
+                task = yield db.findTaskToProcess(_options.lockInterval);
 
-            if ( !task ) {
-                // there are no tasks in queue
-                console.log('task-runner: there are no tasks in queue. Rescan in ' + _options.scanInterval + ' seconds.');
-                break;
-            }
+                if ( !task ) {
+                    // there are no tasks in queue
+                    console.log('task-runner: there are no tasks in queue. Rescan in ' + _options.scanInterval + ' seconds.');
+                    break;
+                }
 
-            if ( task.group ) {
-                previousTask = yield db.findPreviousTask(task);
-                // check if previous task still was not processed - it means that current task is blocked by previous one
-                if ( previousTask && previousTask.processedAt === null ) {
-                    // if previousTask' startAt value greater than startAt of current task - reschedule current task on new date
-                    if (previousTask.startAt.getTime() > task.startAt.getTime()) {
-                        yield db.rescheduleTask(task.taskId, new Date(previousTask.startAt.getTime() + 1000));
+                if ( task.group ) {
+                    previousTask = yield db.findPreviousTask(task);
+                    // check if previous task still was not processed - it means that current task is blocked by previous one
+                    if ( previousTask && previousTask.processedAt === null ) {
+                        // if previousTask' startAt value greater than startAt of current task - reschedule current task on new date
+                        if ( previousTask.startAt.getTime() > task.startAt.getTime() ) {
+                            yield db.rescheduleTask(task.taskId, new Date(previousTask.startAt.getTime() + 1000));
+                        }
+                        continue;
                     }
+                }
+
+                try {
+                    let previousTaskResult = previousTask ? previousTask.result : null;
+                    taskProcessor          = _options.taskProcessorFactory(task.name);
+                    // use taskProcessor as is if it is a function
+                    // in other case execute taskProcessor.run()
+                    if ( 'function' === typeof taskProcessor ) {
+                        taskResult = yield taskProcessor(task.data, previousTaskResult);
+
+                    } else {
+                        taskResult = yield taskProcessor.run(task.data, previousTaskResult);
+                    }
+
+                } catch (err) {
+                    // something goes wrong with or within task processor - mark task as failed
+                    console.log(err);
+                    yield db.markTaskFailed(task.taskId, err.message);
+
+                    // reschedule task in (retries+1) minutes
+                    let delta      = (task.retries + 1) * 60 * 1000,
+                        scheduleAt = new Date(Date.now() + delta);
+
+                    yield db.rescheduleTask(task.taskId, scheduleAt);
                     continue;
                 }
-            }
 
-            try {
-                let previousTaskResult = previousTask ? previousTask.result : null;
-                taskProcessor = _options.taskProcessorFactory(task.name);
-                // use taskProcessor as is if it is a function
-                // in other case execute taskProcessor.run()
-                if ('function' === typeof taskProcessor) {
-                    taskResult = yield taskProcessor(task.data, previousTaskResult);
+                if ( task.repeatEvery > 0 ) {
+                    // task is repeatable and should be rescheduled
+                    let scheduleAt = new Date(Date.now() + (task.repeatEvery * 1000));
+                    yield db.rescheduleTask(task.taskId, scheduleAt);
 
                 } else {
-                    taskResult = yield taskProcessor.run(task.data, previousTaskResult);
+                    // task is not repeatable, finish it and save its result
+                    yield db.markTaskProcessed(task.taskId, taskResult);
                 }
 
-            } catch (err) {
-                // something goes wrong with or within task processor - mark task as failed
-                console.log(err);
-                yield db.markTaskFailed(task.taskId, err.message);
+            } while (taskIndexInCycle < tasksPerCycle);
 
-                // reschedule task in (retries+1) minutes
-                let delta = (task.retries + 1) * 60 * 1000,
-                    scheduleAt = new Date(Date.now() + delta);
+        } catch (err) {
+            // something goes wrong, probably missed connection to mongo. Log error and throw it up
+            console.log('task-runner: error', err.stack);
 
-                yield db.rescheduleTask(task.taskId, scheduleAt);
-                continue;
-            }
-
-            if ( task.repeatEvery > 0 ) {
-                // task is repeatable and should be rescheduled
-                let scheduleAt = new Date(Date.now() + (task.repeatEvery * 1000));
-                yield db.rescheduleTask(task.taskId, scheduleAt);
-
-            } else {
-                // task is not repeatable, finish it and save its result
-                yield db.markTaskProcessed(task.taskId, taskResult);
-            }
-
-        } while (taskIndexInCycle < tasksPerCycle);
-
-        // schedule new scan
-        setTimeout(co.wrap(this.run.bind(this, _options)), _options.scanInterval * 1000);
+        } finally {
+            // schedule new scanning
+            setTimeout(co.wrap(this.run.bind(this, _options)), _options.scanInterval * 1000);
+        }
     }
 };
