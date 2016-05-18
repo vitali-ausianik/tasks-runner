@@ -35,24 +35,45 @@ module.exports = {
      * @param {string} [options.group] - null by default
      * @param {Date}   [options.startAt] - in UTC (current date by default - will be executed immediately)
      * @param {number} [options.repeatEvery] - in seconds, (0 by default - disabled)
+     * @param {string} [options.retryStrategy] - one of 'none', 'pow1', 'pow2', 'pow3'
      */
     schedule: function* (name, data, options) {
-        let _options;
+        let _options,
+            retryStrategies = ['none', 'powN', 'Nm', 'Nh', 'Nd'];
 
         if (!name || 'string' !== typeof name) {
             throw new Error('Name should be of type "string", found "' + typeof name + '"');
         }
 
-        if (options.taskId && 'string' !== typeof options.taskId) {
+        if (options && options.taskId && 'string' !== typeof options.taskId) {
             throw new Error('Option "taskId" should be of type "string", found "' + typeof options.taskId + '"');
+        }
+
+        if (options && options.retryStrategy && 'string' !== typeof options.retryStrategy) {
+            throw new Error(
+                'Option "retryStrategy" should be of type string, found "' + typeof options.retryStrategy + '"'
+            );
         }
 
         _options = Object.assign({
             taskId: uuid.v4(),
             group: null,
             startAt: new Date(),
-            repeatEvery: 0
+            repeatEvery: 0,
+            retryStrategy: 'pow1'
         }, options);
+
+        let isRetryStrategyExists = retryStrategies.some((pattern) => {
+            let regexp = new RegExp('^' + pattern.replace('N', '\\d') + '$', 'gi');
+            return regexp.test(_options.retryStrategy);
+        });
+
+        if (!isRetryStrategyExists) {
+            throw new Error(
+                'Option "retryStrategy" should be matched with one of following patterns [' +
+                retryStrategies.join(',') + '], where N means any integer. Found "' + options.retryStrategy + '"'
+            );
+        }
 
         // Don't allow to set group for repeatable task
         if (_options.repeatEvery > 0 && _options.group) {
@@ -65,7 +86,8 @@ module.exports = {
             data: data,
             group: _options.group,
             startAt: _options.startAt,
-            repeatEvery: _options.repeatEvery
+            repeatEvery: _options.repeatEvery,
+            retryStrategy: _options.retryStrategy
         });
     },
 
@@ -115,15 +137,22 @@ module.exports = {
                 }
 
                 try {
-                    let previousTaskResult = previousTask ? previousTask.result : null;
-                    taskProcessor          = _options.taskProcessorFactory(task.name);
+                    let previousTaskResult = previousTask ? previousTask.result : null,
+                        extendedInfo = {
+                            failedAt: task.failedAt,  // date of previous error
+                            errorMsg: task.errorMsg,  // message of previous error
+                            retries: task.retries,    // count of failed executions
+                            createdAt: task.createdAt // creation date of task
+                        };
+
+                    taskProcessor = _options.taskProcessorFactory(task.name);
                     // use taskProcessor as is if it is a function
                     // in other case execute taskProcessor.run()
                     if ( 'function' === typeof taskProcessor ) {
-                        taskResult = yield taskProcessor(task.data, previousTaskResult);
+                        taskResult = yield taskProcessor(task.data, previousTaskResult, extendedInfo);
 
                     } else {
-                        taskResult = yield taskProcessor.run(task.data, previousTaskResult);
+                        taskResult = yield taskProcessor.run(task.data, previousTaskResult, extendedInfo);
                     }
 
                 } catch (err) {
@@ -131,11 +160,31 @@ module.exports = {
                     console.log(err);
                     yield db.markTaskFailed(task.taskId, err.message);
 
-                    // reschedule task in (retries+1) minutes
-                    let delta      = (task.retries + 1) * 60 * 1000,
-                        scheduleAt = new Date(Date.now() + delta);
+                    let delta;
+                    if (-1 !== task.retryStrategy.search(/^pow\d$/gi)) {
+                        // reschedule task in (retries+1)^N minutes
+                        let pow = parseInt(task.retryStrategy.replace('pow', ''));
+                        delta = Math.pow(task.retries + 1, pow);
 
-                    yield db.rescheduleTask(task.taskId, scheduleAt);
+                    } else if (-1 !== task.retryStrategy.search(/^\dm$/gi)) {
+                        // reschedule task in N minutes
+                        delta = parseInt(task.retryStrategy);
+
+                    } else if (-1 !== task.retryStrategy.search(/^\dh$/gi)) {
+                        // reschedule task in N hours
+                        delta = parseInt(task.retryStrategy) * 60;
+
+                    } else if (-1 !== task.retryStrategy.search(/^\dd$/gi)) {
+                        // reschedule task in N days
+                        delta = parseInt(task.retryStrategy) * 24 * 60;
+                    }
+
+                    if (delta) {
+                        delta = delta * 60 * 1000; // convert delta from minutes to milliseconds
+                        let scheduleAt = new Date(Date.now() + delta);
+                        yield db.rescheduleTask(task.taskId, scheduleAt);
+                    }
+
                     continue;
                 }
 

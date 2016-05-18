@@ -412,9 +412,32 @@ describe('.run', function() {
         assert.notEqual(null, task1.processedAt, 'Task was not processed when it should');
         assert.notEqual(null, task2.processedAt, 'Task was not processed when it should');
         assert.notEqual(null, task3.processedAt, 'Task was not processed when it should');
-        assert.deepEqual(task1ProcessorRunArgs, [ 'task data 1', null ]);
-        assert.deepEqual(task2ProcessorRunArgs, [ 'task data 2', 'expected result of task 1' ]);
-        assert.deepEqual(task3ProcessorRunArgs, [ 'task data 3', 'expected result of task 2' ]);
+
+        assert.equal(task1ProcessorRunArgs.length, 3);
+        assert(task1ProcessorRunArgs[2].createdAt);
+        delete task1ProcessorRunArgs[2].createdAt;
+        assert.deepEqual(task1ProcessorRunArgs, [
+            'task data 1',
+            null,
+            { failedAt: null, errorMsg: null, retries: 0 }
+        ]);
+
+        assert.equal(task2ProcessorRunArgs.length, 3);
+        assert(task2ProcessorRunArgs[2].createdAt);
+        delete task2ProcessorRunArgs[2].createdAt;
+        assert.deepEqual(task2ProcessorRunArgs, [
+            'task data 2',
+            'expected result of task 1',
+            { failedAt: null, errorMsg: null, retries: 0 }
+        ]);
+
+        assert.equal(task3ProcessorRunArgs.length, 3);
+        assert(task3ProcessorRunArgs[2].createdAt);
+        delete task3ProcessorRunArgs[2].createdAt;
+        assert.deepEqual(task3ProcessorRunArgs, [
+            'task data 3',
+            'expected result of task 2',
+            { failedAt: null, errorMsg: null, retries: 0 } ]);
     });
 
     it('test arguments for taskProcessor.run() in case of some failed task in group', function* () {
@@ -478,7 +501,16 @@ describe('.run', function() {
         assert.equal(null, task1.processedAt, 'Task was processed when it should not');
         assert.equal(null, task2.processedAt, 'Task was processed when it should not');
         assert.equal(null, task3.processedAt, 'Task was processed when it should not');
-        assert.deepEqual(task1ProcessorRunArgs, [ 'task data 1', null ]);
+
+        assert.equal(task1ProcessorRunArgs.length, 3);
+        assert(task1ProcessorRunArgs[2].createdAt);
+        delete task1ProcessorRunArgs[2].createdAt;
+        assert.deepEqual(task1ProcessorRunArgs, [
+            'task data 1',
+            null,
+            { failedAt: null, errorMsg: null, retries: 0 }
+        ]);
+
         assert.equal(task2ProcessorRunArgs, null); // task was skipped
         assert.equal(task3ProcessorRunArgs, null); // task was skipped
         assert(findTaskToProcessSpy.calledThrice, 'Function was not called when it should');
@@ -536,9 +568,33 @@ describe('.run', function() {
         assert.notEqual(null, task1.processedAt, 'Task was not processed when it should');
         assert.notEqual(null, task2.processedAt, 'Task was not processed when it should');
         assert.notEqual(null, task3.processedAt, 'Task was not processed when it should');
-        assert.deepEqual(task1ProcessorRunArgs, [ 'task data 1', null ]);
-        assert.deepEqual(task2ProcessorRunArgs, [ 'task data 2', 'expected result of task 1' ]);
-        assert.deepEqual(task3ProcessorRunArgs, [ 'task data 3', 'expected result of task 2' ]);
+
+        assert.equal(task1ProcessorRunArgs.length, 3);
+        assert(task1ProcessorRunArgs[2].createdAt);
+        delete task1ProcessorRunArgs[2].createdAt;
+        assert.deepEqual(task1ProcessorRunArgs, [
+            'task data 1',
+            null,
+            { failedAt: null, errorMsg: null, retries: 0 }
+        ]);
+
+        assert.equal(task2ProcessorRunArgs.length, 3);
+        assert(task2ProcessorRunArgs[2].createdAt);
+        delete task2ProcessorRunArgs[2].createdAt;
+        assert.deepEqual(task2ProcessorRunArgs, [
+            'task data 2',
+            'expected result of task 1',
+            { failedAt: null, errorMsg: null, retries: 0 }
+        ]);
+
+        assert.equal(task3ProcessorRunArgs.length, 3);
+        assert(task3ProcessorRunArgs[2].createdAt);
+        delete task3ProcessorRunArgs[2].createdAt;
+        assert.deepEqual(task3ProcessorRunArgs, [
+            'task data 3',
+            'expected result of task 2',
+            { failedAt: null, errorMsg: null, retries: 0 }
+        ]);
     });
 
     it('test scheduling of scanning with uncaught error', function* () {
@@ -557,5 +613,162 @@ describe('.run', function() {
         assert.equal(findTaskToProcessStub.callCount, 3);
         db.findTaskToProcess.restore();
         clock.restore();
+    });
+
+    it('test scheduling of task with retryStrategy "none"', function* () {
+        let task = yield taskRunner.schedule('test', 'test data', { retryStrategy: 'none' }),
+            taskProcessorFactory = function() {
+                return function* () {
+                    throw new Error('some error');
+                }
+            };
+
+        yield db._collection.findOneAndUpdate({ taskId: task.taskId }, { $set: { retries: 3 }});
+        yield taskRunner.run({ scanInterval: 300, taskProcessorFactory: taskProcessorFactory });
+
+        let newTask = yield db.findTask({ taskId: task.taskId });
+
+        assert.equal(newTask.retries, 4);
+        assert.equal(newTask.startAt.getTime(), task.startAt.getTime());
+    });
+
+    it('test scheduling of task with retryStrategy "pow1"', function* () {
+        let task = yield taskRunner.schedule('test', 'test data', { retryStrategy: 'pow1' }),
+            taskProcessorFactory = function() {
+                return function* () {
+                    throw new Error('some error');
+                }
+            };
+
+        yield db._collection.findOneAndUpdate({ taskId: task.taskId }, { $set: { retries: 3 }});
+        yield taskRunner.run({ scanInterval: 300, taskProcessorFactory: taskProcessorFactory });
+
+        task = yield db.findTask({ taskId: task.taskId });
+        assert.equal(task.retries, 4);
+
+        let newStartAt = Date.now() + 4 * 60 * 1000,
+            startAtDelta = newStartAt - task.startAt.getTime();
+
+        assert(startAtDelta < 50, 'Difference between old startAt and expected one is ' + startAtDelta + ' milliseconds.');
+    });
+
+    it('test scheduling of task with retryStrategy "pow2"', function* () {
+        let task = yield taskRunner.schedule('test', 'test data', { retryStrategy: 'pow2' }),
+            taskProcessorFactory = function() {
+                return function* () {
+                    throw new Error('some error');
+                }
+            };
+
+        yield db._collection.findOneAndUpdate({ taskId: task.taskId }, { $set: { retries: 3 }});
+        yield taskRunner.run({ scanInterval: 300, taskProcessorFactory: taskProcessorFactory });
+
+        task = yield db.findTask({ taskId: task.taskId });
+        assert.equal(task.retries, 4);
+
+        let newStartAt = Date.now() + (4 * 4) * 60 * 1000,
+            startAtDelta = newStartAt - task.startAt.getTime();
+
+        assert(startAtDelta < 50, 'Difference between old startAt and expected one is ' + startAtDelta + ' milliseconds.');
+    });
+
+    it('test scheduling of task with retryStrategy "pow3"', function* () {
+        let task = yield taskRunner.schedule('test', 'test data', { retryStrategy: 'pow3' }),
+            taskProcessorFactory = function() {
+                return function* () {
+                    throw new Error('some error');
+                }
+            };
+
+        yield db._collection.findOneAndUpdate({ taskId: task.taskId }, { $set: { retries: 3 }});
+        yield taskRunner.run({ scanInterval: 300, taskProcessorFactory: taskProcessorFactory });
+
+        task = yield db.findTask({ taskId: task.taskId });
+        assert.equal(task.retries, 4);
+
+        let newStartAt = Date.now() + (4 * 4 * 4) * 60 * 1000,
+            startAtDelta = newStartAt - task.startAt.getTime();
+
+        assert(startAtDelta < 50, 'Difference between old startAt and expected one is ' + startAtDelta + ' milliseconds.');
+    });
+
+    it('test scheduling of task with retryStrategy "5m"', function* () {
+        let task = yield taskRunner.schedule('test', 'test data', { retryStrategy: '5m' }),
+            taskProcessorFactory = function() {
+                return function* () {
+                    throw new Error('some error');
+                }
+            };
+
+        yield db._collection.findOneAndUpdate({ taskId: task.taskId }, { $set: { retries: 8 }});
+        yield taskRunner.run({ scanInterval: 300, taskProcessorFactory: taskProcessorFactory });
+
+        task = yield db.findTask({ taskId: task.taskId });
+        assert.equal(task.retries, 9);
+
+        let newStartAt = Date.now() + 4 * 60 * 1000,
+            startAtDelta = newStartAt - task.startAt.getTime();
+
+        assert(startAtDelta < 50, 'Difference between old startAt and expected one is ' + startAtDelta + ' milliseconds.');
+    });
+
+    it('test scheduling of task with retryStrategy "5h"', function* () {
+        let task = yield taskRunner.schedule('test', 'test data', { retryStrategy: '5h' }),
+            taskProcessorFactory = function() {
+                return function* () {
+                    throw new Error('some error');
+                }
+            };
+
+        yield db._collection.findOneAndUpdate({ taskId: task.taskId }, { $set: { retries: 8 }});
+        yield taskRunner.run({ scanInterval: 300, taskProcessorFactory: taskProcessorFactory });
+
+        task = yield db.findTask({ taskId: task.taskId });
+        assert.equal(task.retries, 9);
+
+        let newStartAt = Date.now() + (5 * 60) * 60 * 1000,
+            startAtDelta = newStartAt - task.startAt.getTime();
+
+        assert(startAtDelta < 50, 'Difference between old startAt and expected one is ' + startAtDelta + ' milliseconds.');
+    });
+
+    it('test scheduling of task with retryStrategy "5d"', function* () {
+        let task = yield taskRunner.schedule('test', 'test data', { retryStrategy: '5d' }),
+            taskProcessorFactory = function() {
+                return function* () {
+                    throw new Error('some error');
+                }
+            };
+
+        yield db._collection.findOneAndUpdate({ taskId: task.taskId }, { $set: { retries: 8 }});
+        yield taskRunner.run({ scanInterval: 300, taskProcessorFactory: taskProcessorFactory });
+
+        task = yield db.findTask({ taskId: task.taskId });
+        assert.equal(task.retries, 9);
+
+        let newStartAt = Date.now() + (5 * 60) * 60 * 1000,
+            startAtDelta = newStartAt - task.startAt.getTime();
+
+        assert(startAtDelta < 50, 'Difference between old startAt and expected one is ' + startAtDelta + ' milliseconds.');
+    });
+
+    it('test scheduling of task with default retryStrategy (not set)', function* () {
+        let task = yield taskRunner.schedule('test', 'test data'),
+            taskProcessorFactory = function() {
+                return function* () {
+                    throw new Error('some error');
+                }
+            };
+
+        yield db._collection.findOneAndUpdate({ taskId: task.taskId }, { $set: { retries: 3 }});
+        yield taskRunner.run({ scanInterval: 300, taskProcessorFactory: taskProcessorFactory });
+
+        task = yield db.findTask({ taskId: task.taskId });
+        assert.equal(task.retries, 4);
+
+        let newStartAt = Date.now() + 4 * 60 * 1000,
+            startAtDelta = newStartAt - task.startAt.getTime();
+
+        assert(startAtDelta < 50, 'Difference between old startAt and expected one is ' + startAtDelta + ' milliseconds.');
     });
 });

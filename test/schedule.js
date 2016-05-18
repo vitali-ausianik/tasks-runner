@@ -48,7 +48,8 @@ describe('.schedule', function() {
             processedAt: null,
             failedAt: null,
             errorMsg: null,
-            retries: 0
+            retries: 0,
+            retryStrategy: 'pow1'
         });
     });
 
@@ -74,7 +75,8 @@ describe('.schedule', function() {
             processedAt: null,
             failedAt: null,
             errorMsg: null,
-            retries: 0
+            retries: 0,
+            retryStrategy: 'pow1'
         });
     });
 
@@ -114,7 +116,8 @@ describe('.schedule', function() {
             processedAt: null,
             failedAt: null,
             errorMsg: null,
-            retries: 0
+            retries: 0,
+            retryStrategy: 'pow1'
         });
     });
 
@@ -140,7 +143,8 @@ describe('.schedule', function() {
             processedAt: null,
             failedAt: null,
             errorMsg: null,
-            retries: 0
+            retries: 0,
+            retryStrategy: 'pow1'
         });
     });
 
@@ -166,7 +170,8 @@ describe('.schedule', function() {
             processedAt: null,
             failedAt: null,
             errorMsg: null,
-            retries: 0
+            retries: 0,
+            retryStrategy: 'pow1'
         });
     });
 
@@ -211,5 +216,58 @@ describe('.schedule', function() {
         assert(result2, 'Expect created task');
         assert.equal(result1.group, 'group 1');
         assert.equal(result2.group, 'group 2');
+    });
+
+    it('test scheduling of task with invalid retryStrategy (string)', function* () {
+        let errorMsg;
+
+        try {
+            yield taskRunner.schedule('test', 'test data', { retryStrategy: 'not exists' });
+
+        } catch (err) {
+            errorMsg = err.message;
+        }
+
+        assert.equal(errorMsg, 'Option "retryStrategy" should be matched with one of following patterns ' +
+            '[none,powN,Nm,Nh,Nd], where N means any integer. Found "not exists"');
+    });
+
+    it('test scheduling of task with invalid retryStrategy (float)', function* () {
+        let errorMsg;
+
+        try {
+            yield taskRunner.schedule('test', 'test data', { retryStrategy: '5.5m' });
+
+        } catch (err) {
+            errorMsg = err.message;
+        }
+
+        assert.equal(errorMsg, 'Option "retryStrategy" should be matched with one of following patterns ' +
+            '[none,powN,Nm,Nh,Nd], where N means any integer. Found "5.5m"');
+    });
+
+    it('schedule tasks with specified retryStrategy', function* () {
+        let task1 = yield taskRunner.schedule('test', 'test data', { retryStrategy: 'none' }),
+            task2 = yield taskRunner.schedule('test', 'test data', { retryStrategy: 'pow1' }),
+            task3 = yield taskRunner.schedule('test', 'test data', { retryStrategy: 'pow2' }),
+            task4 = yield taskRunner.schedule('test', 'test data', { retryStrategy: 'pow3' }),
+            task5 = yield taskRunner.schedule('test', 'test data');
+
+        task1 = yield db.findTask({ taskId: task1.taskId });
+        task2 = yield db.findTask({ taskId: task2.taskId });
+        task3 = yield db.findTask({ taskId: task3.taskId });
+        task4 = yield db.findTask({ taskId: task4.taskId });
+        task5 = yield db.findTask({ taskId: task5.taskId });
+
+        assert(task1, 'Expect created task');
+        assert(task2, 'Expect created task');
+        assert(task3, 'Expect created task');
+        assert(task4, 'Expect created task');
+        assert(task5, 'Expect created task');
+        assert.equal(task1.retryStrategy, 'none');
+        assert.equal(task2.retryStrategy, 'pow1');
+        assert.equal(task3.retryStrategy, 'pow2');
+        assert.equal(task4.retryStrategy, 'pow3');
+        assert.equal(task5.retryStrategy, 'pow1');
     });
 });
