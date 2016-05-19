@@ -120,7 +120,7 @@ module.exports = {
 
                 if ( !task ) {
                     // there are no tasks in queue
-                    console.log('task-runner: there are no tasks in queue. Rescan in ' + _options.scanInterval + ' seconds.');
+                    console.log('tasks-runner: there are no tasks in queue. Rescan in ' + _options.scanInterval + ' seconds.');
                     break;
                 }
 
@@ -202,7 +202,7 @@ module.exports = {
 
         } catch (err) {
             // something goes wrong, probably missed connection to mongo - log error
-            console.log('task-runner: error', err.stack);
+            console.log('tasks-runner: error', err.stack);
 
         } finally {
             // schedule new scanning

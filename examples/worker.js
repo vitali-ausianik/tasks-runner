@@ -1,6 +1,6 @@
 'use strict';
 
-let taskRunner = require('../index'), // require('task-runner') to use it as dependency of your project
+let taskRunner = require('../index'), // require('tasks-runner') to use it as dependency of your project
     co = require('co');
 
 co(function* () {

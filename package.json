@@ -1,13 +1,15 @@
 {
-  "name": "task-runner",
+  "name": "tasks-runner",
   "description": "Scheduler and runner for nodejs scripts",
   "version": "1.0.1",
   "main": "index.js",
   "keywords": [
     "task-runner",
+    "tasks-runner",
     "script-runner",
     "runner",
     "task-scheduler",
+    "tasks-scheduler",
     "scheduler"
   ],
   "author": {
