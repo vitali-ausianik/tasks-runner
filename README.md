@@ -12,11 +12,13 @@ If some task in group will be failed by some reason - others tasks will be postp
 The result of previous task will be passed to current one as an second argument.
 Also every task processor will receive extended information about task as an third argument.
 
-# Task processor arguments
-Every task processor receives three arguments:
+# Task processor
+Task processor could be a function or an object with .run() method. Every task processor receives three arguments:
+
 1. Data that it needs to process.
 2. Result of previous task in case if this task is a member of some group. In other case it passes null.
 3. Extended information about latest error
+
 Please see code sample below for details:
 ```
 extendedInfo = {
