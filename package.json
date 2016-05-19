@@ -1,7 +1,22 @@
 {
   "name": "task-runner",
-  "version": "0.0.1",
+  "description": "Scheduler and runner for nodejs scripts",
+  "version": "1.0.0",
   "main": "index.js",
+  "keywords": ["task-runner", "script-runner", "runner", "task-scheduler", "scheduler"],
+  "author": {
+    "name": "Vitali Ausianik",
+    "email": "vitali.ausianik@gmail.com"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/vitali-ausianik/task-runner",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vitali-ausianik/task-runner.git"
+  },
+  "bugs": {
+    "url": "https://github.com/vitali-ausianik/task-runner/issues"
+  },
   "scripts": {
     "test": "node ./node_modules/mocha/bin/mocha --recursive"
   },
