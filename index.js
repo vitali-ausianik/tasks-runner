@@ -201,7 +201,7 @@ module.exports = {
             } while (taskIndexInCycle < tasksPerCycle);
 
         } catch (err) {
-            // something goes wrong, probably missed connection to mongo. Log error and throw it up
+            // something goes wrong, probably missed connection to mongo - log error
             console.log('task-runner: error', err.stack);
 
         } finally {
