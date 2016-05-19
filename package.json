@@ -1,9 +1,15 @@
 {
   "name": "task-runner",
   "description": "Scheduler and runner for nodejs scripts",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "main": "index.js",
-  "keywords": ["task-runner", "script-runner", "runner", "task-scheduler", "scheduler"],
+  "keywords": [
+    "task-runner",
+    "script-runner",
+    "runner",
+    "task-scheduler",
+    "scheduler"
+  ],
   "author": {
     "name": "Vitali Ausianik",
     "email": "vitali.ausianik@gmail.com"
