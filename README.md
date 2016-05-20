@@ -43,8 +43,7 @@ Also every task processor will receive extended information about task as an thi
 
 # API
 ### .connect(url)
-Returns undefined.
-Set url for connection to mongo. Real connection will be created as soon as it will try to execute any query.
+Returns Promise. Promise will be resolved as soon as connection will be created. We suggest you to not wait its resolving because it will do it as soon as any query will need it.
 
 [See examples](examples/)
 
