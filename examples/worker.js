@@ -1,7 +1,6 @@
 'use strict';
 
-let taskRunner = require('../index'), // require('tasks-runner') to use it as dependency of your project
-    co = require('co');
+let taskRunner = require('../index'); // require('tasks-runner') to use it as dependency of your project
 
 // examples of connection url on http://mongodb.github.io/node-mongodb-native/2.0/tutorials/connecting/
 // connect to set of mongos proxies
@@ -13,32 +12,42 @@ let url = 'mongodb://localhost:27017/test';
 // Set url for connection to mongo. Real connection will be created as soon as it will try to execute any query
 taskRunner.connect(url);
 
-co(function* () {
-    'use strict';
-    try {
-        let myFactory = function(name) {
-            // name contains task.name
-            // use it to decide what processor should you return to process this task
-            console.log('Task name: ' + name);
+let taskProcessorFactory = function(taskName) {
+    // name contains task.name
+    // use it to decide what processor should you return to process this task
+    console.log('Providing processor for task with name: ' + taskName);
+
+    switch (taskName) {
+        case 'example 1':
+            return function* (data, previousTaskResult, extendedTaskInfo) {
+                console.log('Passed data during task scheduling: ' + data);
+                console.log('Result of previous task of the same group: ' + previousTaskResult);
+                console.log('Extended information about current task: ' + extendedTaskInfo);
+            };
+
+        case 'example 2':
             return {
-                run: function* (data, previousTaskResult) {
-                    // process task here
-                    // data contains task.data
-                    // previousTaskResult contains task.result of previous task in group or null
-                    // throw Error in case if task shouldn't be marked as successful
-                    console.log('Passed data: ' + data);
-                    console.log('Result of previous task in group: ' + previousTaskResult);
+                someMethod: function() {
+                    console.log('do something');
+                },
+                run: function* (data, previousTaskResult, extendedTaskInfo) {
+                    this.someMethod();
+                    console.log('Passed data during task scheduling: ' + data);
+                    console.log('Result of previous task of the same group: ' + previousTaskResult);
+                    console.log('Extended information about current task: ' + extendedTaskInfo);
                 }
-            }
-        };
+            };
 
-        yield taskRunner.run({
-            scanInterval: 60, // 60 seconds
-            lockInterval: 60, // 60 seconds
-            taskProcessorFactory: myFactory
-        });
-
-    } catch(err) {
-        console.log(err);
+        default:
+            throw new Error('Task processor is not defined for task: ' + taskName);
     }
+};
+
+taskRunner.run({
+    scanInterval: 60, // 60 seconds
+    lockInterval: 60, // 60 seconds
+    tasksPerScanning: 1000,
+    taskProcessorFactory: taskProcessorFactory
+}).then(function() {
+    console.log('First scanning iteration was finished, second scanning iteration was scheduled in scanInterval seconds');
 });

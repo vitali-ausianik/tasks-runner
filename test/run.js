@@ -15,10 +15,10 @@ describe('.run', function() {
     });
 
     after(function* () {
-        taskRunner.close();
+        yield taskRunner.close();
     });
 
-    beforeEach(function* () {
+    afterEach(function* () {
         yield db.remove({});
     });
 
@@ -604,13 +604,13 @@ describe('.run', function() {
         yield taskRunner.run({ scanInterval: 30 });
 
         // next iterations throw an error
-        let findTaskToProcessStub = sinon.stub(db, 'findTaskToProcess').throws(new Error('expected error'));
+        let findTaskToProcessStub = sinon.stub(db, 'findTaskToProcess', function* () { throw new Error('expected error'); });
 
-        // move timer forward to trigger 3 iterations
-        clock.tick(90000);
+        // move timer forward to trigger iteration
+        clock.tick(30000);
 
         assert(findTaskToProcessStub.called);
-        assert.equal(findTaskToProcessStub.callCount, 3);
+        assert.equal(findTaskToProcessStub.callCount, 1);
         db.findTaskToProcess.restore();
         clock.restore();
     });
