@@ -6,19 +6,21 @@ let db = require('./lib/db'),
 
 module.exports = {
     /**
-     * Connect to mongo
+     * Set url for connection to mongo. Real connection will be created as soon as it will try to execute any query
      * @param {string} url - url to mongo db
      */
-    connect: function* (url) {
-        yield db.connect(url);
+    connect: function (url) {
+        db.url = url;
     },
 
     /**
      * Force close connection to mongo
      * Usually you don't need it
      */
-    close: function* () {
-        yield db.close();
+    close: function () {
+        return co(function* () {
+            yield db.close();
+        });
     },
 
     /**

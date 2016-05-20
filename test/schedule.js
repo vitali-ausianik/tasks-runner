@@ -10,7 +10,7 @@ let db = require('../lib/db'),
 
 describe('.schedule', function() {
     before(function* () {
-        yield taskRunner.connect('mongodb://localhost:27017/test');
+        taskRunner.connect('mongodb://localhost:27017/test');
         yield db.remove({});
     });
 

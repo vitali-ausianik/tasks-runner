@@ -3,18 +3,19 @@
 let taskRunner = require('../index'), // require('tasks-runner') to use it as dependency of your project
     co = require('co');
 
+// examples of connection url on http://mongodb.github.io/node-mongodb-native/2.0/tutorials/connecting/
+// connect to set of mongos proxies
+// let url = 'mongodb://localhost:50000,localhost:50001/myproject';
+// connect to a ReplicaSet
+// let url = 'mongodb://localhost:27017,localhost:27018/myproject?replicaSet=foo';
+// connect to single server
+let url = 'mongodb://localhost:27017/test';
+// Set url for connection to mongo. Real connection will be created as soon as it will try to execute any query
+taskRunner.connect(url);
+
 co(function* () {
     'use strict';
     try {
-        // examples of connection url on http://mongodb.github.io/node-mongodb-native/2.0/tutorials/connecting/
-        // connect to set of mongos proxies
-        // let url = 'mongodb://localhost:50000,localhost:50001/myproject';
-        // connect to a ReplicaSet
-        // let url = 'mongodb://localhost:27017,localhost:27018/myproject?replicaSet=foo';
-        // connect to single server
-        let url = 'mongodb://localhost:27017/test';
-        yield taskRunner.connect(url);
-
         // schedule task with specified taskId to be sure that nothing else will not create it twice
         yield taskRunner.schedule(
             'task name', // task name, will be passed as an argument into taskProcessorFactory()

@@ -32,7 +32,7 @@ taskResult = yield taskProcessor(task.data, previousTaskResult, extendedInfo);
 
 # Usage
 ### .connect(url)
-Connect task-runner to mongo by provided url.
+Set url for connection to mongo. Real connection will be created as soon as it will try to execute any query.
 
 [See examples](examples/)
 
@@ -65,4 +65,5 @@ options.taskProcessorFactory | function | optional | Should return task processo
 [See examples](examples/worker.js)
 
 ### .close()
+Returns Promise or undefined (in case if connection is not exists).
 Force closing connection to mongo. Usually you don't need to do it manually, but probably you will need it for some tests.
