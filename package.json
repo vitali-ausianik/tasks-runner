@@ -1,7 +1,7 @@
 {
   "name": "tasks-runner",
   "description": "Scheduler and runner for nodejs scripts",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "main": "index.js",
   "keywords": [
     "task-runner",
