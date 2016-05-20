@@ -10,12 +10,12 @@ let taskRunner = require('../index'),
 
 describe('.run', function() {
     before(function* () {
-        yield taskRunner.connect('mongodb://localhost:27017/test');
+        taskRunner.connect('mongodb://localhost:27017/test');
         yield db.remove({});
     });
 
     after(function* () {
-        yield taskRunner.close();
+        taskRunner.close();
     });
 
     beforeEach(function* () {
