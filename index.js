@@ -30,11 +30,27 @@ module.exports = {
 
     /**
      * @param {object} query
+     * @param {string} [collection] - by default 'tasks'
      * @returns {Promise}
      */
-    remove: function (query) {
+    remove: function (query, collection) {
+        collection = collection || 'tasks';
+
         return co(function* () {
-            yield db.remove(query);
+            yield db.remove(collection, query);
+        });
+    },
+
+    /**
+     * @param {object} query
+     * @param {string} [collection] - by default 'tasks'
+     * @returns {Promise}
+     */
+    findTask: function (query, collection) {
+        collection = collection || 'tasks';
+
+        return co(function* () {
+            return yield db.findTask(collection, query);
         });
     },
 
@@ -47,6 +63,7 @@ module.exports = {
      * @param {Date}   [options.startAt] - in UTC (current date by default - will be executed immediately)
      * @param {number} [options.repeatEvery] - in seconds, (0 by default - disabled)
      * @param {string} [options.retryStrategy] - one of 'none', 'pow1', 'pow2', 'pow3'
+     * @param {string} [options.collection] - "tasks" by default
      * @returns {Promise}
      */
     schedule: function (name, data, options) {
@@ -61,6 +78,7 @@ module.exports = {
      * @param {number} [options.lockInterval] - in seconds, 60 by default
      * @param {function} [options.taskProcessorFactory] - should return task processor by task name, require() by default
      * @param {number} [options.tasksPerScanning] - count of tasks that should be picked per every scanning. By default 1000
+     * @param {string} [options.collection] - "tasks" by default
      * @returns {Promise}
      */
     run: function (options) {
@@ -69,7 +87,8 @@ module.exports = {
                 scanInterval: 60, // seconds
                 lockInterval: 60, // seconds
                 taskProcessorFactory: require,
-                tasksPerScanning: 1000 // tasks that will be executed per every scanning iteration.
+                tasksPerScanning: 1000, // tasks that will be executed per every scanning iteration.
+                collection: 'tasks'
             }, options);
 
         return co(function* () {

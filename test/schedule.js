@@ -11,7 +11,7 @@ let db = require('../lib/db'),
 describe('.schedule', function() {
     before(function* () {
         taskRunner.connect('mongodb://localhost:27017/test');
-        yield db.remove({});
+        yield taskRunner.remove({});
     });
 
     after(function* () {
@@ -19,7 +19,7 @@ describe('.schedule', function() {
     });
 
     afterEach(function* () {
-        yield db.remove({});
+        yield taskRunner.remove({});
     });
 
     it('function present', function() {
@@ -253,11 +253,11 @@ describe('.schedule', function() {
             task4 = yield taskRunner.schedule('test', 'test data', { retryStrategy: 'pow3' }),
             task5 = yield taskRunner.schedule('test', 'test data');
 
-        task1 = yield db.findTask({ taskId: task1.taskId });
-        task2 = yield db.findTask({ taskId: task2.taskId });
-        task3 = yield db.findTask({ taskId: task3.taskId });
-        task4 = yield db.findTask({ taskId: task4.taskId });
-        task5 = yield db.findTask({ taskId: task5.taskId });
+        task1 = yield taskRunner.findTask({ taskId: task1.taskId });
+        task2 = yield taskRunner.findTask({ taskId: task2.taskId });
+        task3 = yield taskRunner.findTask({ taskId: task3.taskId });
+        task4 = yield taskRunner.findTask({ taskId: task4.taskId });
+        task5 = yield taskRunner.findTask({ taskId: task5.taskId });
 
         assert(task1, 'Expect created task');
         assert(task2, 'Expect created task');

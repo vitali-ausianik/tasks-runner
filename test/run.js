@@ -11,15 +11,17 @@ let taskRunner = require('../index'),
 describe('.run', function() {
     before(function* () {
         taskRunner.connect('mongodb://localhost:27017/test');
-        yield db.remove({});
+        yield taskRunner.remove({});
+        yield taskRunner.remove({}, 'tasks2');
     });
 
     after(function* () {
         yield taskRunner.close();
     });
 
-    afterEach(function* () {
-        yield db.remove({});
+    beforeEach(function* () {
+        yield taskRunner.remove({});
+        yield taskRunner.remove({}, 'tasks2');
     });
 
     it('function present', function() {
@@ -42,7 +44,7 @@ describe('.run', function() {
             taskProcessorFactory: taskProcessorFactory
         });
 
-        task = yield db.findTask({ taskId: task.taskId });
+        task = yield taskRunner.findTask({ taskId: task.taskId });
 
         assert.notEqual(null, task.processedAt, 'Task was not processed when it should');
         assert.equal('test', taskNamePassedToProcessor, 'Task name was not passed to task processor');
@@ -61,7 +63,7 @@ describe('.run', function() {
             taskProcessorFactory: taskProcessorFactory
         });
 
-        task = yield db.findTask({ taskId: task.taskId });
+        task = yield taskRunner.findTask({ taskId: task.taskId });
 
         assert.equal(null, task.processedAt, 'Task was processed when it shouldn\'t');
     });
@@ -75,14 +77,14 @@ describe('.run', function() {
             };
 
         // lock event
-        yield db._collection.findOneAndUpdate({ taskId: task.taskId }, { $set: { lockedAt: new Date() } } );
+        yield db._conn.collection('tasks').findOneAndUpdate({ taskId: task.taskId }, { $set: { lockedAt: new Date() } } );
 
         yield taskRunner.run({
             lockInterval: 60,
             taskProcessorFactory: taskProcessorFactory
         });
 
-        task = yield db.findTask({ taskId: task.taskId });
+        task = yield taskRunner.findTask({ taskId: task.taskId });
 
         assert.equal(null, task.processedAt, 'Task was processed when it shouldn\'t');
     });
@@ -96,14 +98,14 @@ describe('.run', function() {
             };
 
         // set expired lock
-        yield db._collection.findOneAndUpdate({ taskId: task.taskId }, { $set: { lockedAt: new Date(Date.now() - 70000) } } );
+        yield db._conn.collection('tasks').findOneAndUpdate({ taskId: task.taskId }, { $set: { lockedAt: new Date(Date.now() - 70000) } } );
 
         yield taskRunner.run({
             lockInterval: 60,
             taskProcessorFactory: taskProcessorFactory
         });
 
-        task = yield db.findTask({ taskId: task.taskId });
+        task = yield taskRunner.findTask({ taskId: task.taskId });
 
         assert.notEqual(null, task.processedAt, 'Task was not processed when it should');
     });
@@ -126,8 +128,8 @@ describe('.run', function() {
             taskProcessorFactory: taskProcessorFactory
         });
 
-        task1 = yield db.findTask({ taskId: task1.taskId });
-        task2 = yield db.findTask({ taskId: task2.taskId });
+        task1 = yield taskRunner.findTask({ taskId: task1.taskId });
+        task2 = yield taskRunner.findTask({ taskId: task2.taskId });
 
         assert.notEqual(null, task1.processedAt, 'Task was not processed when it should');
         assert.notEqual(null, task2.processedAt, 'Task was not processed when it should');
@@ -147,7 +149,7 @@ describe('.run', function() {
             };
 
         // lock first task to make it blocker for second task
-        yield db._collection.findOneAndUpdate(
+        yield db._conn.collection('tasks').findOneAndUpdate(
             { taskId: task1.taskId },
             {
                 $set: {
@@ -161,8 +163,8 @@ describe('.run', function() {
             taskProcessorFactory: taskProcessorFactory
         });
 
-        task1 = yield db.findTask({ taskId: task1.taskId });
-        task2 = yield db.findTask({ taskId: task2.taskId });
+        task1 = yield taskRunner.findTask({ taskId: task1.taskId });
+        task2 = yield taskRunner.findTask({ taskId: task2.taskId });
 
         assert.equal(null, task1.processedAt, 'Task was processed when it shouldn\'t');
         assert.equal(null, task2.processedAt, 'Task was processed when it shouldn\'t');
@@ -184,7 +186,7 @@ describe('.run', function() {
             };
 
         // lock first task to make it blocker for second task
-        yield db._collection.findOneAndUpdate(
+        yield db._conn.collection('tasks').findOneAndUpdate(
             { taskId: task1.taskId },
             {
                 $set: {
@@ -198,8 +200,8 @@ describe('.run', function() {
             taskProcessorFactory: taskProcessorFactory
         });
 
-        task1 = yield db.findTask({ taskId: task1.taskId });
-        task2 = yield db.findTask({ taskId: task2.taskId });
+        task1 = yield taskRunner.findTask({ taskId: task1.taskId });
+        task2 = yield taskRunner.findTask({ taskId: task2.taskId });
 
         assert.equal(null, task1.processedAt, 'Task was processed when it shouldn\'t');
         assert.equal(null, task2.processedAt, 'Task was processed when it shouldn\'t');
@@ -222,7 +224,7 @@ describe('.run', function() {
             taskProcessorFactory: taskProcessorFactory
         });
 
-        task = yield db.findTask({ taskId: task.taskId });
+        task = yield taskRunner.findTask({ taskId: task.taskId });
 
         let newStartAt = Date.now() + 100000;
         // assume infelicity of newStartAt is 50 milliseconds
@@ -248,7 +250,7 @@ describe('.run', function() {
         });
 
         // set expired lock and set startAt in the past
-        yield db._collection.findOneAndUpdate(
+        yield db._conn.collection('tasks').findOneAndUpdate(
             { taskId: task.taskId },
             {
                 $set: {
@@ -263,7 +265,7 @@ describe('.run', function() {
             taskProcessorFactory: taskProcessorFactory
         });
 
-        task = yield db.findTask({ taskId: task.taskId });
+        task = yield taskRunner.findTask({ taskId: task.taskId });
 
         assert.equal(null, task.processedAt, 'Task was finished when it shouldn\'t');
         assert.equal(2, task.retries, 'Task was failed twice but "retries" counter is ' + task.retries);
@@ -287,7 +289,7 @@ describe('.run', function() {
         });
 
         // set expired lock and set startAt in the past
-        yield db._collection.findOneAndUpdate(
+        yield db._conn.collection('tasks').findOneAndUpdate(
             { taskId: task.taskId },
             {
                 $set: {
@@ -302,7 +304,7 @@ describe('.run', function() {
             taskProcessorFactory: taskProcessorFactory
         });
 
-        task = yield db.findTask({ taskId: task.taskId });
+        task = yield taskRunner.findTask({ taskId: task.taskId });
 
         assert.equal(null, task.processedAt, 'Task was finished when it shouldn\'t');
         assert.equal(2, task.retries, 'Task was failed twice but "retries" counter is ' + task.retries);
@@ -331,7 +333,7 @@ describe('.run', function() {
             };
 
         // lock first task to make it blocker for second task
-        yield db._collection.findOneAndUpdate(
+        yield db._conn.collection('tasks').findOneAndUpdate(
             { taskId: task1.taskId },
             {
                 $set: {
@@ -345,9 +347,9 @@ describe('.run', function() {
             taskProcessorFactory: taskProcessorFactory
         });
 
-        task1 = yield db.findTask({ taskId: task1.taskId });
-        task2 = yield db.findTask({ taskId: task2.taskId });
-        task3 = yield db.findTask({ taskId: task3.taskId });
+        task1 = yield taskRunner.findTask({ taskId: task1.taskId });
+        task2 = yield taskRunner.findTask({ taskId: task2.taskId });
+        task3 = yield taskRunner.findTask({ taskId: task3.taskId });
 
         assert.equal(null, task1.processedAt, 'Task was processed when it shouldn\'t');
         assert.equal(null, task2.processedAt, 'Task was processed when it shouldn\'t');
@@ -405,9 +407,9 @@ describe('.run', function() {
             taskProcessorFactory: taskProcessorFactory
         });
 
-        task1 = yield db.findTask({ taskId: task1.taskId });
-        task2 = yield db.findTask({ taskId: task2.taskId });
-        task3 = yield db.findTask({ taskId: task3.taskId });
+        task1 = yield taskRunner.findTask({ taskId: task1.taskId });
+        task2 = yield taskRunner.findTask({ taskId: task2.taskId });
+        task3 = yield taskRunner.findTask({ taskId: task3.taskId });
 
         assert.notEqual(null, task1.processedAt, 'Task was not processed when it should');
         assert.notEqual(null, task2.processedAt, 'Task was not processed when it should');
@@ -494,9 +496,9 @@ describe('.run', function() {
         });
         db.findPreviousTask.restore();
 
-        task1 = yield db.findTask({ taskId: task1.taskId });
-        task2 = yield db.findTask({ taskId: task2.taskId });
-        task3 = yield db.findTask({ taskId: task3.taskId });
+        task1 = yield taskRunner.findTask({ taskId: task1.taskId });
+        task2 = yield taskRunner.findTask({ taskId: task2.taskId });
+        task3 = yield taskRunner.findTask({ taskId: task3.taskId });
 
         assert.equal(null, task1.processedAt, 'Task was processed when it should not');
         assert.equal(null, task2.processedAt, 'Task was processed when it should not');
@@ -561,9 +563,9 @@ describe('.run', function() {
             taskProcessorFactory: taskProcessorFactory
         });
 
-        task1 = yield db.findTask({ taskId: task1.taskId });
-        task2 = yield db.findTask({ taskId: task2.taskId });
-        task3 = yield db.findTask({ taskId: task3.taskId });
+        task1 = yield taskRunner.findTask({ taskId: task1.taskId });
+        task2 = yield taskRunner.findTask({ taskId: task2.taskId });
+        task3 = yield taskRunner.findTask({ taskId: task3.taskId });
 
         assert.notEqual(null, task1.processedAt, 'Task was not processed when it should');
         assert.notEqual(null, task2.processedAt, 'Task was not processed when it should');
@@ -623,10 +625,10 @@ describe('.run', function() {
                 }
             };
 
-        yield db._collection.findOneAndUpdate({ taskId: task.taskId }, { $set: { retries: 3 }});
+        yield db._conn.collection('tasks').findOneAndUpdate({ taskId: task.taskId }, { $set: { retries: 3 }});
         yield taskRunner.run({ scanInterval: 300, taskProcessorFactory: taskProcessorFactory });
 
-        let newTask = yield db.findTask({ taskId: task.taskId });
+        let newTask = yield taskRunner.findTask({ taskId: task.taskId });
 
         assert.equal(newTask.retries, 4);
         assert.equal(newTask.startAt.getTime(), task.startAt.getTime());
@@ -640,10 +642,10 @@ describe('.run', function() {
                 }
             };
 
-        yield db._collection.findOneAndUpdate({ taskId: task.taskId }, { $set: { retries: 3 }});
+        yield db._conn.collection('tasks').findOneAndUpdate({ taskId: task.taskId }, { $set: { retries: 3 }});
         yield taskRunner.run({ scanInterval: 300, taskProcessorFactory: taskProcessorFactory });
 
-        task = yield db.findTask({ taskId: task.taskId });
+        task = yield taskRunner.findTask({ taskId: task.taskId });
         assert.equal(task.retries, 4);
 
         let newStartAt = Date.now() + 4 * 60 * 1000,
@@ -660,10 +662,10 @@ describe('.run', function() {
                 }
             };
 
-        yield db._collection.findOneAndUpdate({ taskId: task.taskId }, { $set: { retries: 3 }});
+        yield db._conn.collection('tasks').findOneAndUpdate({ taskId: task.taskId }, { $set: { retries: 3 }});
         yield taskRunner.run({ scanInterval: 300, taskProcessorFactory: taskProcessorFactory });
 
-        task = yield db.findTask({ taskId: task.taskId });
+        task = yield taskRunner.findTask({ taskId: task.taskId });
         assert.equal(task.retries, 4);
 
         let newStartAt = Date.now() + (4 * 4) * 60 * 1000,
@@ -680,10 +682,10 @@ describe('.run', function() {
                 }
             };
 
-        yield db._collection.findOneAndUpdate({ taskId: task.taskId }, { $set: { retries: 3 }});
+        yield db._conn.collection('tasks').findOneAndUpdate({ taskId: task.taskId }, { $set: { retries: 3 }});
         yield taskRunner.run({ scanInterval: 300, taskProcessorFactory: taskProcessorFactory });
 
-        task = yield db.findTask({ taskId: task.taskId });
+        task = yield taskRunner.findTask({ taskId: task.taskId });
         assert.equal(task.retries, 4);
 
         let newStartAt = Date.now() + (4 * 4 * 4) * 60 * 1000,
@@ -700,10 +702,10 @@ describe('.run', function() {
                 }
             };
 
-        yield db._collection.findOneAndUpdate({ taskId: task.taskId }, { $set: { retries: 8 }});
+        yield db._conn.collection('tasks').findOneAndUpdate({ taskId: task.taskId }, { $set: { retries: 8 }});
         yield taskRunner.run({ scanInterval: 300, taskProcessorFactory: taskProcessorFactory });
 
-        task = yield db.findTask({ taskId: task.taskId });
+        task = yield taskRunner.findTask({ taskId: task.taskId });
         assert.equal(task.retries, 9);
 
         let newStartAt = Date.now() + 4 * 60 * 1000,
@@ -720,10 +722,10 @@ describe('.run', function() {
                 }
             };
 
-        yield db._collection.findOneAndUpdate({ taskId: task.taskId }, { $set: { retries: 8 }});
+        yield db._conn.collection('tasks').findOneAndUpdate({ taskId: task.taskId }, { $set: { retries: 8 }});
         yield taskRunner.run({ scanInterval: 300, taskProcessorFactory: taskProcessorFactory });
 
-        task = yield db.findTask({ taskId: task.taskId });
+        task = yield taskRunner.findTask({ taskId: task.taskId });
         assert.equal(task.retries, 9);
 
         let newStartAt = Date.now() + (5 * 60) * 60 * 1000,
@@ -740,10 +742,10 @@ describe('.run', function() {
                 }
             };
 
-        yield db._collection.findOneAndUpdate({ taskId: task.taskId }, { $set: { retries: 8 }});
+        yield db._conn.collection('tasks').findOneAndUpdate({ taskId: task.taskId }, { $set: { retries: 8 }});
         yield taskRunner.run({ scanInterval: 300, taskProcessorFactory: taskProcessorFactory });
 
-        task = yield db.findTask({ taskId: task.taskId });
+        task = yield taskRunner.findTask({ taskId: task.taskId });
         assert.equal(task.retries, 9);
 
         let newStartAt = Date.now() + (5 * 60) * 60 * 1000,
@@ -760,13 +762,33 @@ describe('.run', function() {
                 }
             };
 
-        yield db._collection.findOneAndUpdate({ taskId: task.taskId }, { $set: { retries: 3 }});
+        yield db._conn.collection('tasks').findOneAndUpdate({ taskId: task.taskId }, { $set: { retries: 3 }});
         yield taskRunner.run({ scanInterval: 300, taskProcessorFactory: taskProcessorFactory });
 
-        task = yield db.findTask({ taskId: task.taskId });
+        task = yield taskRunner.findTask({ taskId: task.taskId });
         assert.equal(task.retries, 4);
 
         let newStartAt = Date.now() + 4 * 60 * 1000,
+            startAtDelta = newStartAt - task.startAt.getTime();
+
+        assert(startAtDelta < 50, 'Difference between old startAt and expected one is ' + startAtDelta + ' milliseconds.');
+    });
+
+    it('test scheduling of task with custom collection', function* () {
+        let task = yield taskRunner.schedule('test', 'test data', { retryStrategy: '5d', collection: 'tasks2' }),
+            taskProcessorFactory = function() {
+                return function* () {
+                    throw new Error('some error');
+                }
+            };
+
+        yield db._conn.collection('tasks2').findOneAndUpdate({ taskId: task.taskId }, { $set: { retries: 8 }});
+        yield taskRunner.run({ scanInterval: 300, taskProcessorFactory: taskProcessorFactory, collection: 'tasks2' });
+
+        task = yield taskRunner.findTask({ taskId: task.taskId }, 'tasks2');
+        assert.equal(task.retries, 9);
+
+        let newStartAt = Date.now() + (5 * 60) * 60 * 1000,
             startAtDelta = newStartAt - task.startAt.getTime();
 
         assert(startAtDelta < 50, 'Difference between old startAt and expected one is ' + startAtDelta + ' milliseconds.');
