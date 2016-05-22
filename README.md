@@ -1,4 +1,4 @@
-# Task Runner [![Build Status](https://travis-ci.org/vitali-ausianik/task-runner.svg?branch=master)](https://travis-ci.org/vitali-ausianik/task-runner)
+# Task Runner [![Build Status](https://travis-ci.org/vitali-ausianik/tasks-runner.svg?branch=master)](https://travis-ci.org/vitali-ausianik/tasks-runner)
 Could resolve following issues:
 
 1. schedule task to be executed at specified time
