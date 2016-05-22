@@ -4,12 +4,12 @@
   "version": "1.0.4",
   "main": "index.js",
   "keywords": [
-    "task-runner",
     "tasks-runner",
+    "tasks-scheduler",
+    "task-runner",
+    "task-scheduler",
     "script-runner",
     "runner",
-    "task-scheduler",
-    "tasks-scheduler",
     "scheduler"
   ],
   "author": {
@@ -17,13 +17,13 @@
     "email": "vitali.ausianik@gmail.com"
   },
   "license": "MIT",
-  "homepage": "https://github.com/vitali-ausianik/task-runner",
+  "homepage": "https://github.com/vitali-ausianik/tasks-runner",
   "repository": {
     "type": "git",
-    "url": "https://github.com/vitali-ausianik/task-runner.git"
+    "url": "https://github.com/vitali-ausianik/tasks-runner.git"
   },
   "bugs": {
-    "url": "https://github.com/vitali-ausianik/task-runner/issues"
+    "url": "https://github.com/vitali-ausianik/tasks-runner/issues"
   },
   "scripts": {
     "test": "node ./node_modules/mocha/bin/mocha --recursive"
