@@ -5,6 +5,11 @@ Could resolve following issues:
 2. schedule task to be executed with specified period
 3. schedule tasks within specified group to be executed one by one in order like it was scheduled
 
+# Installation
+```
+npm install tasks-runner
+```
+
 # How it works
 Based on periodical scanning iterations. Every iteration it executes a `tasksPerScanning` count of tasks. New iteration will not
 be scheduled until old one finished. When worker pick task - task will be marked with current date and locked.
