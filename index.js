@@ -100,7 +100,7 @@ module.exports = {
 
         }).then(function() {
             // schedule new scanning
-            console.log('tasks-runner: finished scanning iteration, rescan in ' + options.scanInterval + ' seconds.');
+            console.log('tasks-runner: finished scanning iteration, rescan in ' + _options.scanInterval + ' seconds.');
             setTimeout(co.wrap(self.run.bind(self, _options)), _options.scanInterval * 1000);
         });
     }
