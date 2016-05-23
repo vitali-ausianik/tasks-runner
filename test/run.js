@@ -206,6 +206,7 @@ describe('.run', function() {
         assert.equal(null, task1.processedAt, 'Task was processed when it shouldn\'t');
         assert.equal(null, task2.processedAt, 'Task was processed when it shouldn\'t');
         assert.equal(11000, task2.startAt.getTime(), 'Task was not rescheduled or was rescheduled on wrong time');
+        assert(new Date().getTime() - task2.lockedAt.getTime() < 50, 'Task became to be unlocked when it should not');
     });
 
     it('process repeatable task and check new scheduled date', function* () {
@@ -230,6 +231,7 @@ describe('.run', function() {
         // assume infelicity of newStartAt is 50 milliseconds
         let startAtDelta = Math.abs(task.startAt.getTime() - newStartAt);
         assert(startAtDelta < 50, 'Difference between old startAt and expected one is ' + startAtDelta + ' milliseconds');
+        assert.equal(task.lockedAt.getTime(), new Date(0).getTime(), 'lockedAt was not reset properly');
         assert.equal(null, task.processedAt, 'Task was finished when it shouldn\'t');
     });
 
