@@ -22,7 +22,7 @@ let taskProcessorFactory = function(taskName) {
             return function* (data, previousTaskResult, extendedTaskInfo) {
                 console.log('Passed data during task scheduling: ' + data);
                 console.log('Result of previous task of the same group: ' + previousTaskResult);
-                console.log('Extended information about current task: ' + extendedTaskInfo);
+                console.log('Extended information about current task: ', extendedTaskInfo);
             };
 
         case 'example 2':
@@ -34,7 +34,7 @@ let taskProcessorFactory = function(taskName) {
                     this.someMethod();
                     console.log('Passed data during task scheduling: ' + data);
                     console.log('Result of previous task of the same group: ' + previousTaskResult);
-                    console.log('Extended information about current task: ' + extendedTaskInfo);
+                    console.log('Extended information about current task: ', extendedTaskInfo);
                 }
             };
 
@@ -49,5 +49,8 @@ taskRunner.run({
     tasksPerScanning: 1000,
     taskProcessorFactory: taskProcessorFactory
 }).then(function() {
-    console.log('First scanning iteration was finished, second scanning iteration was scheduled in scanInterval seconds');
+    console.log('First scanning iteration was finished');
 });
+
+process.on('SIGTERM', taskRunner.stop.bind(taskRunner));
+process.on('SIGINT', taskRunner.stop.bind(taskRunner));

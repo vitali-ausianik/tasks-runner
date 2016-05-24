@@ -1,9 +1,10 @@
 # Tasks Runner [![Build Status](https://travis-ci.org/vitali-ausianik/tasks-runner.svg?branch=master)](https://travis-ci.org/vitali-ausianik/tasks-runner)
 Could resolve following issues:
 
-1. schedule task to be executed at specified time
-2. schedule task to be executed with specified period
-3. schedule tasks within specified group to be executed one by one in order like it was scheduled
+1. Schedule task to be executed at specified time
+2. Schedule task to be executed with specified period
+3. Schedule tasks within specified group to be executed one by one in order like it was scheduled
+4. Graceful shutdown. All started runners will have 30 seconds to finish its current tasks in case of shutdown.
 
 # Installation
 ```
@@ -18,6 +19,9 @@ with following requirements: task is not still processed and previous task lock 
 So you need to be sure that every of scheduled tasks will be finished in `lockInterval` seconds.
 
 Task will be marked as failed if it thrown any error and as processed in others cases.
+
+# Graceful shutdown
+Runner supports graceful shutdown. All started runners will have 30 seconds to finish current tasks in case of shutdown.
 
 # Task processor
 Task processor could be a function or an object with implemented `.run()` method.
@@ -105,6 +109,12 @@ options.collection           | string   | optional | Collection that should be m
 
 [See examples](examples/worker.js)
 
+### .stop()
+Returns Promise.
+Graceful shutdown. All started runners will have 30 seconds to finish its current tasks in case of executing this function.
+
+[See examples](examples/worker.js)
+
 ### .findTask(query, collection)
 Returns Promise or null. Finds one task by some mongo query.
 
@@ -120,7 +130,6 @@ Parameter  | Type   | Required | Description
 ---------- | ------ | -------- | -----------
 query      | Object | required | Mongo query for remove operation.
 collection | string | optional | Collection that should be used. By default - "tasks".
-
 
 ### .close()
 Returns Promise or undefined (in case if connection is not exists).

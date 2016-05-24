@@ -4,9 +4,21 @@ let db = require('./lib/db'),
     co = require('co'),
     uuid = require('uuid'),
     scheduler = require('./lib/scheduler'),
-    runner = require('./lib/runner');
+    Runner = require('./lib/runner');
 
 module.exports = {
+    /**
+     * Started runners.
+     * @private
+     */
+    _runners: [],
+
+    /**
+     * Graceful shutdown is in progress
+     * @private
+     */
+    _isStopping: false,
+
     /**
      * Set url for connection to mongo. Real connection will be created as soon as it will try to execute any query
      * @param {string} url - url to mongo db
@@ -82,26 +94,50 @@ module.exports = {
      * @returns {Promise}
      */
     run: function (options) {
-        let self = this,
-            _options = Object.assign({
-                scanInterval: 60, // seconds
-                lockInterval: 60, // seconds
-                taskProcessorFactory: require,
-                tasksPerScanning: 1000, // tasks that will be executed per every scanning iteration.
-                collection: 'tasks'
-            }, options);
+        let runner = new Runner(options);
+        this._runners.push(runner);
 
         return co(function* () {
-            yield runner.run(_options);
+            yield runner.start();
+        });
+    },
 
-        }).catch(function(err) {
-            // something goes wrong, probably missed connection to mongo - log error
-            console.log('tasks-runner: error', err.stack);
+    /**
+     * Graceful shutdown.
+     * Runners will have 30 seconds to finish current tasks.
+     * If tasks will be not finished in 30 seconds - force process shutdown.
+     * @returns {Promise}
+     */
+    stop: function() {
+        let self = this;
 
-        }).then(function() {
-            // schedule new scanning
-            console.log('tasks-runner: finished scanning iteration, rescan in ' + _options.scanInterval + ' seconds.');
-            setTimeout(co.wrap(self.run.bind(self, _options)), _options.scanInterval * 1000);
+        return co(function () {
+            console.log('tasks-runner: graceful shutdown is in progress, please wait...');
+
+            if (self._isStopping) {
+                return;
+            }
+
+            function _gracefulShutdown(secondsPassed) {
+                if ( secondsPassed === 30 ) {
+                    process.exit(1);
+                }
+
+                this._runners = this._runners.filter(runner => !runner.isStopped);
+
+                if ( this._runners.length ) {
+                    secondsPassed++;
+                    setTimeout(_gracefulShutdown.bind(this, secondsPassed), 1000);
+
+                } else {
+                    return this.close();
+                }
+            }
+
+            self._isStopping = true;
+            self._runners.forEach(runner => runner.stop());
+
+            return _gracefulShutdown.call(self, 0);
         });
     }
 };

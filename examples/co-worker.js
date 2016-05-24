@@ -56,3 +56,6 @@ co(function* () {
 
     console.log('First scanning iteration was finished, second scanning iteration was scheduled in scanInterval seconds');
 });
+
+process.on('SIGTERM', taskRunner.stop.bind(taskRunner));
+process.on('SIGINT', taskRunner.stop.bind(taskRunner));
