@@ -2,7 +2,7 @@
 
 let db = require('./lib/db'),
     co = require('co'),
-    uuid = require('uuid'),
+    config = require('./lib/config'),
     scheduler = require('./lib/scheduler'),
     Runner = require('./lib/runner');
 
@@ -22,8 +22,21 @@ module.exports = {
     /**
      * Set url for connection to mongo. Real connection will be created as soon as it will try to execute any query
      * @param {string} url - url to mongo db
+     * @param {Object} [options]
+     * @param {string} [options.collection] - specify collection name that should be used by default
+     * @param {Object} [options.logger] - specify logger that should be used
      */
-    connect: function (url) {
+    connect: function (url, options) {
+        options = options || {};
+
+        if (options.collection) {
+            config.collection = options.collection;
+        }
+
+        if (options.logger) {
+            config.logger = options.logger;
+        }
+
         return co(function* () {
             yield db.connect(url);
         });
@@ -46,7 +59,7 @@ module.exports = {
      * @returns {Promise}
      */
     remove: function (query, collection) {
-        collection = collection || 'tasks';
+        collection = collection || config.collection;
 
         return co(function* () {
             yield db.remove(collection, query);
@@ -59,7 +72,7 @@ module.exports = {
      * @returns {Promise}
      */
     findTask: function (query, collection) {
-        collection = collection || 'tasks';
+        collection = collection || config.collection;
 
         return co(function* () {
             return yield db.findTask(collection, query);
@@ -112,7 +125,7 @@ module.exports = {
         let self = this;
 
         return co(function () {
-            console.log('tasks-runner: graceful shutdown is in progress, please wait...');
+            config.logger.debug('Graceful shutdown is in progress, please wait...');
 
             if (self._isStopping) {
                 return;

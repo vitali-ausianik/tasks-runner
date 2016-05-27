@@ -71,8 +71,15 @@ retries       | number   | Counter of how many times this task was executed. It 
 createdAt     | Date     | Date when task was created.
 
 # API
-### .connect(url)
+### .connect(url, options)
 Returns Promise. Promise will be resolved as soon as connection will be created. We suggest you to not wait its resolving because it will do it as soon as any query will need it.
+
+Parameter             | Type   | Required | Description
+--------------------- | ------ | -------- | -----------
+url                   | string | required | Connection url for mongodb
+options               | Object | optional |
+options.collection    | string | optional | Collection name that should be used by default
+options.logger        | Object | optional | Logger that should be used. It should implement `.debug()` and `.error()` methods
 
 [See examples](examples/)
 
