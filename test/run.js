@@ -235,6 +235,30 @@ describe('.run', function() {
         assert.equal(null, task.processedAt, 'Task was finished when it shouldn\'t');
     });
 
+    it('process repeatable task and store its result', function* () {
+        let task = yield taskRunner.schedule('test', 'task data', {
+                repeatEvery: 100,
+                startAt: new Date(0)
+            }),
+            taskProcessorFactory = function() {
+                return {
+                    run: function* () {
+                        return 'task result';
+                    }
+                }
+            };
+
+        yield taskRunner.run({
+            lockInterval: 60,
+            taskProcessorFactory: taskProcessorFactory
+        });
+
+        task = yield taskRunner.findTask({ taskId: task.taskId });
+
+        assert.equal(null, task.processedAt, 'Task was finished when it shouldn\'t');
+        assert.equal('task result', task.result, 'Task result was not stored properly');
+    });
+
     it('run failed task twice and check "retries" field (should be 2)', function* () {
         let task = yield taskRunner.schedule('test', 'task data', {
                 startAt: new Date(0)
