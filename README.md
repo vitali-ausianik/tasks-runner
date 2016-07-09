@@ -110,6 +110,7 @@ Parameter                    | Type     | Required | Description
 options                      | Object   | required |
 options.scanInterval         | number   | optional | Period of scanning for ready to execute tasks, in seconds. By default - 60 seconds.
 options.lockInterval         | number   | optional | Max time for task to be finished or failed, in seconds. By default - 60 seconds.
+options.groupInterval        | number   | optional | Time that should be used for rescheduling tasks in scope of one group in case if previous task is not still processed, in seconds. By default - 5 seconds.
 options.taskProcessorFactory | function | optional | Should return task processor for provided task name (via first argument). Task processor could be a function or an object with .run() method. As an argument task processor receives task data. Also it can receive result of previous task execution in case if both tasks are members of the same group.
 options.tasksPerScanning     | number   | optional | Count of tasks that should be executed per scanning iteration. By default - 1000. Iteration should be finished in scanInterval seconds.
 options.collection           | string   | optional | Collection that should be managed by this worker. By default - "tasks".

@@ -101,6 +101,7 @@ module.exports = {
      * @param {object} [options]
      * @param {number} [options.scanInterval] - in seconds, 60 by default
      * @param {number} [options.lockInterval] - in seconds, 60 by default
+     * @param {number} [options.groupInterval] - in seconds, 5 by default
      * @param {function} [options.taskProcessorFactory] - should return task processor by task name, require() by default
      * @param {number} [options.tasksPerScanning] - count of tasks that should be picked per every scanning. By default 1000
      * @param {string} [options.collection] - "tasks" by default

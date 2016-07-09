@@ -170,7 +170,7 @@ describe('.run', function() {
         assert.equal(null, task2.processedAt, 'Task was processed when it shouldn\'t');
     });
 
-    it('process blocked task with specified group and check that it was rescheduled on new time', function* () {
+    it('process blocked task with specified group and check that it was rescheduled on new time (default groupInterval)', function* () {
         let task1 = yield taskRunner.schedule('test', 'task data', {
                 startAt: new Date(10000),
                 group:   'test'
@@ -205,8 +205,50 @@ describe('.run', function() {
 
         assert.equal(null, task1.processedAt, 'Task was processed when it shouldn\'t');
         assert.equal(null, task2.processedAt, 'Task was processed when it shouldn\'t');
-        assert.equal(11000, task2.startAt.getTime(), 'Task was not rescheduled or was rescheduled on wrong time');
-        assert(new Date().getTime() - task2.lockedAt.getTime() < 50, 'Task became to be unlocked when it should not');
+        let delta = (new Date().getTime() + 5000) - task2.startAt.getTime();
+        assert(delta < 50, 'Task was not rescheduled or was rescheduled on wrong time');
+        assert(task2.lockedAt.getTime() === 0, 'Task is locked when it should not');
+    });
+
+    it('process blocked task with specified group and check that it was rescheduled on new time (specified groupInterval)', function* () {
+        let task1 = yield taskRunner.schedule('test', 'task data', {
+                startAt: new Date(10000),
+                group:   'test'
+            }),
+            task2 = yield taskRunner.schedule('test', 'task data', {
+                startAt: new Date(1000),
+                group:   'test'
+            }),
+            taskProcessorFactory = function () {
+                return {
+                    run: function*() {}
+                };
+            };
+
+        // lock first task to make it blocker for second task
+        yield db._conn.collection('tasks').findOneAndUpdate(
+            { taskId: task1.taskId },
+            {
+                $set: {
+                    lockedAt: new Date()
+                }
+            }
+        );
+
+        yield taskRunner.run({
+            lockInterval: 60,
+            groupInterval: 60000,
+            taskProcessorFactory: taskProcessorFactory
+        });
+
+        task1 = yield db.findTask('tasks', { taskId: task1.taskId });
+        task2 = yield db.findTask('tasks', { taskId: task2.taskId });
+
+        assert.equal(null, task1.processedAt, 'Task was processed when it shouldn\'t');
+        assert.equal(null, task2.processedAt, 'Task was processed when it shouldn\'t');
+        let delta = (new Date().getTime() + 60000) - task2.startAt.getTime();
+        assert(delta < 50, 'Task was not rescheduled or was rescheduled on wrong time');
+        assert(task2.lockedAt.getTime() === 0, 'Task is locked when it should not');
     });
 
     it('process repeatable task and check new scheduled date', function* () {
@@ -818,5 +860,51 @@ describe('.run', function() {
             startAtDelta = newStartAt - task.startAt.getTime();
 
         assert(startAtDelta < 50, 'Difference between old startAt and expected one is ' + startAtDelta + ' milliseconds.');
+    });
+
+    it('run repeatable task, first time fail, second - success', function* () {
+        let task = yield taskRunner.schedule('test', 'task data', {
+                startAt: new Date(0),
+                repeatEvery: 10
+            }),
+            failingTaskProcessorFactory = function() {
+                return {
+                    run: function* () {
+                        throw new Error('expected error');
+                    }
+                };
+            },
+            workingTaskProcessorFactory = function() {
+                return {
+                    run: function* () {
+                        return 'success';
+                    }
+                };
+            };
+
+        yield taskRunner.run({
+            taskProcessorFactory: failingTaskProcessorFactory
+        });
+
+        // set expired lock and set startAt in the past
+        yield db._conn.collection('tasks').findOneAndUpdate(
+            { taskId: task.taskId },
+            {
+                $set: {
+                    lockedAt: new Date(Date.now() - 2000),
+                    startAt: new Date(0)
+                }
+            }
+        );
+
+        yield taskRunner.run({
+            lockInterval: 1,
+            taskProcessorFactory: workingTaskProcessorFactory
+        });
+
+        task = yield db.findTask('tasks', { taskId: task.taskId });
+
+        assert.equal(task.retries, 0, 'Task not flush retries count aftre success execution');
+        assert.equal(task.result, 'success');
     });
 });
