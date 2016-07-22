@@ -28,6 +28,115 @@ describe('.run', function() {
         assert.equal('function', typeof taskRunner.run, 'Can not find function .run()');
     });
 
+    it('process task with processor as simple function', function* () {
+        let taskNamePassedToProcessor = null,
+            task = yield taskRunner.schedule('test', 'task data'),
+            taskProcessorFactory = function(name) {
+                taskNamePassedToProcessor = name;
+                return function () {
+                    return 'expected';
+                }
+            };
+
+        yield taskRunner.run({
+            taskProcessorFactory: taskProcessorFactory
+        });
+
+        task = yield taskRunner.findTask({ taskId: task.taskId });
+
+        assert.notEqual(null, task.processedAt, 'Task was not processed when it should');
+        assert.equal('test', taskNamePassedToProcessor, 'Task name was not passed to task processor');
+        assert.equal('expected', task.result, 'Task result was not stored properly');
+    });
+
+    it('process task with processor as GeneratorFunction', function* () {
+        let taskNamePassedToProcessor = null,
+            task = yield taskRunner.schedule('test', 'task data'),
+            taskProcessorFactory = function(name) {
+                taskNamePassedToProcessor = name;
+                return function* () {
+                    return 'expected';
+                }
+            };
+
+        yield taskRunner.run({
+            taskProcessorFactory: taskProcessorFactory
+        });
+
+        task = yield taskRunner.findTask({ taskId: task.taskId });
+
+        assert.notEqual(null, task.processedAt, 'Task was not processed when it should');
+        assert.equal('test', taskNamePassedToProcessor, 'Task name was not passed to task processor');
+        assert.equal('expected', task.result, 'Task result was not stored properly');
+    });
+
+    it('process task with processor as GeneratorFunction', function* () {
+        let taskNamePassedToProcessor = null,
+            task = yield taskRunner.schedule('test', 'task data'),
+            taskProcessorFactory = function(name) {
+                taskNamePassedToProcessor = name;
+                return function* () {
+                    return 'expected';
+                }
+            };
+
+        yield taskRunner.run({
+            taskProcessorFactory: taskProcessorFactory
+        });
+
+        task = yield taskRunner.findTask({ taskId: task.taskId });
+
+        assert.notEqual(null, task.processedAt, 'Task was not processed when it should');
+        assert.equal('test', taskNamePassedToProcessor, 'Task name was not passed to task processor');
+        assert.equal('expected', task.result, 'Task result was not stored properly');
+    });
+
+    it('process task with processor as function which returns promise', function* () {
+        let taskNamePassedToProcessor = null,
+            task = yield taskRunner.schedule('test', 'task data'),
+            taskProcessorFactory = function(name) {
+                taskNamePassedToProcessor = name;
+                return function () {
+                    return new Promise(function(resolve) {
+                        setTimeout(resolve.bind(null, 'expected'), 500);
+                    });
+                }
+            };
+
+        yield taskRunner.run({
+            taskProcessorFactory: taskProcessorFactory
+        });
+
+        task = yield taskRunner.findTask({ taskId: task.taskId });
+
+        assert.notEqual(null, task.processedAt, 'Task was not processed when it should');
+        assert.equal('test', taskNamePassedToProcessor, 'Task name was not passed to task processor');
+        assert.equal('expected', task.result, 'Task result was not stored properly');
+    });
+
+    it('process task with processor as object with implemented method .run()', function* () {
+        let taskNamePassedToProcessor = null,
+            task = yield taskRunner.schedule('test', 'task data'),
+            taskProcessorFactory = function(name) {
+                taskNamePassedToProcessor = name;
+                return {
+                    run: function* () {
+                        return 'expected';
+                    }
+                }
+            };
+
+        yield taskRunner.run({
+            taskProcessorFactory: taskProcessorFactory
+        });
+
+        task = yield taskRunner.findTask({ taskId: task.taskId });
+
+        assert.notEqual(null, task.processedAt, 'Task was not processed when it should');
+        assert.equal('test', taskNamePassedToProcessor, 'Task name was not passed to task processor');
+        assert.equal('expected', task.result, 'Task result was not stored properly');
+    });
+
     it('process task with startAt in the past (should be processed)', function* () {
         let taskNamePassedToProcessor = null,
             task = yield taskRunner.schedule('test', 'task data', { startAt: new Date(Date.now() - 86400) }),
